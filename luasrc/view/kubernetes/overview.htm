@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes - 总览</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding: 16px; background: #fff; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .k8s-header h2 { margin: 0; color: #333; font-size: 18px; }
+        .ns-selector {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .ns-selector label { font-size: 13px; color: #666; }
+        .ns-selector select {
+            padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px;
+            font-size: 13px; background: #fff; cursor: pointer; min-width: 150px;
+        }
+        .k8s-cards {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 24px;
+        }
+        .k8s-card {
+            background: #fff; border-radius: 8px; padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;
+            cursor: pointer; transition: all 0.2s; border: 2px solid transparent;
+        }
+        .k8s-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-color: #4a90d9; }
+        .k8s-card .icon { font-size: 36px; margin-bottom: 8px; }
+        .k8s-card .count { font-size: 28px; font-weight: 700; color: #333; }
+        .k8s-card .label { font-size: 13px; color: #666; margin-top: 4px; }
+        .node-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .node-card {
+            background: #fff; border-radius: 8px; padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .node-card .node-name { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 8px; }
+        .node-card .node-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .node-card .node-status.ready { background: #d4edda; color: #155724; }
+        .node-card .node-status.notready { background: #f8d7da; color: #721c24; }
+        .node-card .node-info { margin-top: 12px; font-size: 13px; color: #666; line-height: 1.8; }
+        .loading { text-align: center; padding: 40px; color: #999; }
+        .error-msg { text-align: center; padding: 20px; color: #dc3545; background: #f8d7da; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2>☸️ Kubernetes 集群总览</h2>
+        <div class="ns-selector">
+            <label>命名空间:</label>
+            <select id="namespaceSelect" onchange="onNamespaceChange()">
+                <option value="all">全部命名空间</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="k8s-cards" id="resourceCards"></div>
+
+    <h3 style="color:#333;margin-bottom:16px;padding:0 4px">🖥️ 节点状态</h3>
+    <div id="nodeStatus" class="loading">加载中...</div>
+
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    var currentNS = 'all';
+
+    var resourceTypes = [
+        { icon: '📦', label: 'Pods', page: 'pods', api: 'pods' },
+        { icon: '🚀', label: '部署', page: 'deployments', api: 'deployments' },
+        { icon: '🔄', label: '有状态集', page: 'statefulsets', api: 'statefulsets' },
+        { icon: '🛡️', label: '守护进程', page: 'daemonsets', api: 'daemonsets' },
+        { icon: '⚡', label: '任务', page: 'jobs', api: 'jobs' },
+        { icon: '⏰', label: '定时任务', page: 'cronjobs', api: 'cronjobs' },
+        { icon: '🌐', label: '服务', page: 'services', api: 'services' },
+        { icon: '🔀', label: '入口', page: 'ingresses', api: 'ingresses' },
+        { icon: '⚙️', label: '配置映射', page: 'configmaps', api: 'configmaps' },
+        { icon: '🔑', label: '密钥', page: 'secrets', api: 'secrets' },
+        { icon: '💾', label: '持久卷声明', page: 'pvcs', api: 'pvcs' },
+        { icon: '🗄️', label: '持久卷', page: 'pvs', api: 'pvs' },
+        { icon: '📁', label: '存储类', page: 'storageclasses', api: 'storageclasses' },
+        { icon: '🔔', label: '事件', page: 'events', api: 'events' },
+        { icon: '📊', label: '资源使用', page: 'resources', api: 'resources' },
+        { icon: '⚙️', label: '设置', page: 'settings', api: null }
+    ];
+
+    function loadNamespaces() {
+        fetchK8sAPI('api/namespaces').then(function(data) {
+            var sel = document.getElementById('namespaceSelect');
+            sel.innerHTML = '<option value="all">全部命名空间</option>';
+            if (data.items) {
+                data.items.forEach(function(ns) {
+                    var opt = document.createElement('option');
+                    opt.value = ns.metadata.name;
+                    opt.textContent = ns.metadata.name;
+                    sel.appendChild(opt);
+                });
+            }
+            var saved = localStorage.getItem('k8s_ns');
+            if (saved) sel.value = saved;
+            currentNS = sel.value;
+        }).catch(function() {
+            document.getElementById('namespaceSelect').innerHTML = '<option value="all">全部</option>';
+        });
+    }
+
+    function onNamespaceChange() {
+        currentNS = document.getElementById('namespaceSelect').value;
+        localStorage.setItem('k8s_ns', currentNS);
+        loadCounts();
+    }
+
+    function loadCounts() {
+        var container = document.getElementById('resourceCards');
+        container.innerHTML = '';
+        resourceTypes.forEach(function(rt) {
+            var card = document.createElement('div');
+            card.className = 'k8s-card';
+            card.innerHTML = '<div class="icon">' + rt.icon + '</div><div class="count" id="count-' + rt.api + '">-</div><div class="label">' + rt.label + '</div>';
+            if (rt.page) {
+                card.onclick = function() { window.location = '<%=luci.dispatcher.build_url("admin", "services", "kubernetes")%>/' + rt.page; };
+            }
+            container.appendChild(card);
+        });
+
+        resourceTypes.forEach(function(rt) {
+            if (!rt.api) return;
+            var params = currentNS !== 'all' ? '?namespace=' + encodeURIComponent(currentNS) : '';
+            fetchK8sAPI('api/' + rt.api + params).then(function(data) {
+                var el = document.getElementById('count-' + rt.api);
+                if (!el) return;
+                if (data.items) {
+                    el.textContent = data.items.length;
+                } else if (data.nodes) {
+                    el.textContent = data.nodes.trim().split('\n').filter(function(l){return l.trim()}).length;
+                } else {
+                    el.textContent = '0';
+                }
+            }).catch(function() {
+                var el = document.getElementById('count-' + rt.api);
+                if (el) el.textContent = '×';
+            });
+        });
+    }
+
+    function loadNodes() {
+        var el = document.getElementById('nodeStatus');
+        fetchK8sAPI('api/nodes').then(function(data) {
+            if (!data.items || data.items.length === 0) {
+                el.innerHTML = '<div class="loading">暂无节点</div>';
+                return;
+            }
+            var html = '<div class="node-cards">';
+            data.items.forEach(function(node) {
+                var status = 'NotReady';
+                if (node.status && node.status.conditions) {
+                    node.status.conditions.forEach(function(c) {
+                        if (c.type === 'Ready' && c.status === 'True') status = 'Ready';
+                    });
+                }
+                var sc = status === 'Ready' ? 'ready' : 'notready';
+                var version = '-';
+                var ip = '-';
+                var osImg = '';
+                if (node.status && node.status.nodeInfo) {
+                    version = node.status.nodeInfo.kubeletVersion || '-';
+                    osImg = node.status.nodeInfo.osImage || '';
+                }
+                if (node.status && node.status.addresses) {
+                    node.status.addresses.forEach(function(a) {
+                        if (a.type === 'InternalIP') ip = a.address;
+                    });
+                }
+                html += '<div class="node-card">';
+                html += '<div class="node-name">' + escHtml(node.metadata.name) + '</div>';
+                html += '<span class="node-status ' + sc + '● ' + status + '</span>';
+                html += '<div class="node-info">';
+                html += 'IP: ' + ip + '<br>';
+                html += '版本: ' + escHtml(version) + '<br>';
+                if (osImg) html += 'OS: ' + escHtml(osImg) + '<br>';
+                html += '</div></div>';
+            });
+            html += '</div>';
+            el.innerHTML = html;
+        }).catch(function(err) {
+            el.innerHTML = '<div class="error-msg">加载节点失败: ' + escHtml(err.message) + '</div>';
+        });
+    }
+
+    loadNamespaces();
+    loadCounts();
+    loadNodes();
+    </script>
+</body>
+</html>

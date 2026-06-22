@@ -1,0 +1,5 @@
+config global 'config'
+	option enabled '1'
+	option kubeconfig '/etc/kubernetes/admin.conf'
+	option default_namespace 'default'
+	option refresh_interval '15'

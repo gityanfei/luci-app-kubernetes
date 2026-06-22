@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Kubernetes - 节点</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .node-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+        .node-card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-left:4px solid #4a90d9}
+        .node-card .name{font-size:16px;font-weight:600;color:#333;margin-bottom:8px}
+        .node-card .status{display:inline-block;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:600;margin-bottom:12px}
+        .node-card .status.ready{background:#d4edda;color:#155724}
+        .node-card .status.notready{background:#f8d7da;color:#721c24}
+        .node-card .info{font-size:13px;color:#666;line-height:2}
+        .node-card .info span{color:#333;font-weight:500}
+        .btn{display:inline-block;padding:4px 10px;border-radius:4px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:12px}
+        .btn-primary{border-color:#4a90d9;color:#4a90d9}
+        .btn-primary:hover{background:#4a90d9;color:#fff}
+        .loading{text-align:center;padding:40px;color:#999}
+        .err{text-align:center;padding:20px;color:#dc3545;background:#f8d7da;border-radius:8px}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center}
+        .modal-overlay.active{display:flex}
+        .modal-box{background:#fff;border-radius:12px;width:90%;max-width:900px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column}
+        .modal-header{padding:16px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+        .modal-header h3{margin:0;color:#333;font-size:16px}
+        .modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0 8px}
+        .modal-close:hover{color:#dc3545}
+        .modal-body{padding:16px 24px;overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:13px;color:#333;white-space:pre-wrap;word-break:break-all;background:#f8f9fa}
+        .count-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1976d2;font-size:12px;font-weight:600;margin-left:8px}
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2>🖥️ 节点<span class="count-badge" id="countBadge">0</span></h2>
+        <button class="btn btn-primary" onclick="load()">🔄 刷新</button>
+    </div>
+    <div class="node-grid" id="nodeGrid"><div class="loading">加载中...</div></div>
+    <div class="modal-overlay" id="modal">
+        <div class="modal-box">
+            <div class="modal-header"><h3 id="mTitle">详情</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+            <div class="modal-body" id="mBody"></div>
+        </div>
+    </div>
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    function load(){var g=document.getElementById('nodeGrid');g.innerHTML='<div class="loading">加载中...</div>';
+        fetchK8sAPI('api/nodes').then(function(d){var items=d.items||[];document.getElementById('countBadge').textContent=items.length;
+            if(!items.length){g.innerHTML='<div class="loading">暂无节点</div>';return;}g.innerHTML='';
+            items.forEach(function(n){var status='NotReady';if(n.status&&n.status.conditions)n.status.conditions.forEach(function(c){if(c.type==='Ready'&&c.status==='True')status='Ready';});
+                var sc=status==='Ready'?'ready':'notready';var ver='-';var ip='-';var osImg='';
+                if(n.status&&n.status.nodeInfo){ver=n.status.nodeInfo.kubeletVersion||'-';osImg=n.status.nodeInfo.osImage||'';}
+                if(n.status&&n.status.addresses)n.status.addresses.forEach(function(a){if(a.type==='InternalIP')ip=a.address;});
+                var card=document.createElement('div');card.className='node-card';
+                card.innerHTML='<div class="name">'+escHtml(n.metadata.name)+'</div><span class="status '+sc+'">● '+status+'</span><div class="info">IP: <span>'+escHtml(ip)+'</span><br>版本: <span>'+escHtml(ver)+'</span>'+(osImg?'<br>OS: <span>'+escHtml(osImg)+'</span>':'')+'<br>运行时间: <span>'+getAge(n)+'</span></div><div style="margin-top:12px"><button class="btn btn-primary" onclick="showDesc(\''+escHtml(n.metadata.name)+'\')">详情</button></div>';
+                g.appendChild(card);});}).catch(function(e){g.innerHTML='<div class="err">加载失败: '+escHtml(e.message)+'</div>';});}
+    function showDesc(name){showModal('节点详情 - '+name,'<div class="loading">加载中...</div>');
+        fetch(K8S_BASE+'/api/describe?kind=node&namespace=&name='+encodeURIComponent(name)).then(function(r){return r.text();}).then(function(t){document.getElementById('mBody').textContent=t;}).catch(function(e){document.getElementById('mBody').textContent='加载失败: '+e.message;});}
+    function showModal(t,c){document.getElementById('mTitle').textContent=t;document.getElementById('mBody').innerHTML=c;document.getElementById('modal').classList.add('active');}
+    function closeModal(){document.getElementById('modal').classList.remove('active');}
+    document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+    load();
+    </script>
+</body>
+</html>

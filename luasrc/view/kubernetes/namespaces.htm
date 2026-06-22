@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Kubernetes - 命名空间</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .k8s-table-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden}
+        .k8s-table{width:100%;border-collapse:collapse}
+        .k8s-table th{text-align:left;padding:12px 16px;color:#666;font-size:12px;border-bottom:2px solid #eee;background:#f8f9fa}
+        .k8s-table td{padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px}
+        .k8s-table tr:hover{background:#f8f9fa}
+        .k8s-table .mono{font-family:'Consolas',monospace;font-size:12px;color:#333}
+        .ns-badge{display:inline-block;padding:4px 10px;border-radius:4px;background:#e3f2fd;color:#1976d2;font-size:13px;font-weight:600;cursor:pointer}
+        .ns-badge:hover{background:#bbdefb}
+        .st-active{color:#28a745;font-weight:600}
+        .st-terminating{color:#dc3545;font-weight:600}
+        .btn{display:inline-block;padding:4px 10px;border-radius:4px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:12px}
+        .btn-primary{border-color:#4a90d9;color:#4a90d9}
+        .btn-primary:hover{background:#4a90d9;color:#fff}
+        .btn-danger{border-color:#dc3545;color:#dc3545}
+        .btn-danger:hover{background:#dc3545;color:#fff}
+        .loading{text-align:center;padding:40px;color:#999}
+        .err{text-align:center;padding:20px;color:#dc3545;background:#f8d7da;border-radius:8px}
+        .count-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1976d2;font-size:12px;font-weight:600;margin-left:8px}
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2>📂 命名空间<span class="count-badge" id="countBadge">0</span></h2>
+        <button class="btn btn-primary" onclick="load()">🔄 刷新</button>
+    </div>
+    <div class="k8s-table-wrap">
+        <table class="k8s-table">
+            <thead><tr><th>名称</th><th>状态</th><th>创建时间</th><th>Pod 数</th><th>操作</th></tr></thead>
+            <tbody id="tbody"><tr><td colspan="5" class="loading">加载中...</td></tr></tbody>
+        </table>
+    </div>
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    function load(){var t=document.getElementById('tbody');t.innerHTML='<tr><td colspan="5" class="loading">加载中...</td></tr>';
+        fetchK8sAPI('api/namespaces').then(function(d){var items=d.items||[];document.getElementById('countBadge').textContent=items.length;
+            if(!items.length){t.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;color:#999">暂无数据</td></tr>';return;}t.innerHTML='';
+            items.forEach(function(ns){var tr=document.createElement('tr');var sc=ns.status&&ns.status.phase==='Active'?'st-active':'st-terminating';
+                tr.innerHTML='<td><span class="ns-badge" onclick="selectNS(\''+escHtml(ns.metadata.name)+'\')">'+escHtml(ns.metadata.name)+'</span></td><td><span class="'+sc+'">'+escHtml(ns.status&&ns.status.phase||'-')+'</span></td><td>'+getAge(ns)+'</td><td id="pods-'+escHtml(ns.metadata.name)+'">-</td><td><button class="btn btn-primary" onclick="selectNS(\''+escHtml(ns.metadata.name)+'\')">查看 Pods</button></td>';
+                t.appendChild(tr);
+                // Load pod count
+                fetchK8sAPI('api/pods?namespace='+encodeURIComponent(ns.metadata.name)).then(function(pd){var c=(pd.items||[]).length;var el=document.getElementById('pods-'+escHtml(ns.metadata.name));if(el)el.textContent=c;}).catch(function(){});
+            });}).catch(function(e){t.innerHTML='<tr><td colspan="5"><div class="err">加载失败: '+escHtml(e.message)+'</div></td></tr>';});}
+    function selectNS(ns){localStorage.setItem('k8s_ns',ns);window.location.href=K8S_BASE+'/pods';}
+    load();
+    </script>
+</body>
+</html>

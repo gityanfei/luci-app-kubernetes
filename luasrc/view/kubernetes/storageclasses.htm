@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes - 存储类</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .ns-selector{display:flex;align-items:center;gap:8px}
+        .ns-selector label{font-size:13px;color:#666}
+        .ns-selector select{padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;min-width:150px}
+        .k8s-table-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden}
+        .k8s-table{width:100%;border-collapse:collapse}
+        .k8s-table th{text-align:left;padding:12px 16px;color:#666;font-size:12px;border-bottom:2px solid #eee;background:#f8f9fa;white-space:nowrap}
+        .k8s-table td{padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px}
+        .k8s-table tr:hover{background:#f8f9fa}
+        .k8s-table .mono{font-family:'Consolas','Monaco',monospace;font-size:12px;color:#333}
+        .ns-badge{display:inline-block;padding:2px 6px;border-radius:3px;background:#e3f2fd;color:#1976d2;font-size:11px;font-weight:600}
+        .st-running{color:#28a745;font-weight:600}
+        .st-pending{color:#ffc107;font-weight:600}
+        .st-failed{color:#dc3545;font-weight:600}
+        .btn{display:inline-block;padding:4px 10px;border-radius:4px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:12px;margin-right:4px;text-decoration:none}
+        .btn:hover{background:#f0f0f0}
+        .btn-danger{border-color:#dc3545;color:#dc3545}
+        .btn-danger:hover{background:#dc3545;color:#fff}
+        .btn-primary{border-color:#4a90d9;color:#4a90d9}
+        .btn-primary:hover{background:#4a90d9;color:#fff}
+        .btn-success{border-color:#28a745;color:#28a745}
+        .btn-success:hover{background:#28a745;color:#fff}
+        .loading{text-align:center;padding:40px;color:#999}
+        .err{text-align:center;padding:20px;color:#dc3545;background:#f8d7da;border-radius:8px}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center}
+        .modal-overlay.active{display:flex}
+        .modal-box{background:#fff;border-radius:12px;width:90%;max-width:900px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column}
+        .modal-header{padding:16px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+        .modal-header h3{margin:0;color:#333;font-size:16px}
+        .modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0 8px}
+        .modal-close:hover{color:#dc3545}
+        .modal-body{padding:16px 24px;overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:13px;color:#333;white-space:pre-wrap;word-break:break-all;background:#f8f9fa}
+        .count-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1976d2;font-size:12px;font-weight:600;margin-left:8px}
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2>📁 存储类<span class="count-badge" id="countBadge">0</span></h2>
+        <div style="display:flex;align-items:center;gap:12px">
+            <div class="ns-selector">
+                <label>命名空间:</label>
+                <select id="nsSelect" onchange="onNSChange()">
+                    <option value="all">全部</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="load()">🔄 刷新</button>
+        </div>
+    </div>
+    <div class="k8s-table-wrap">
+        <table class="k8s-table">
+            <thead><tr id="thead"></tr></thead>
+            <tbody id="tbody"><tr><td colspan="10" class="loading">加载中...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="modal-overlay" id="modal">
+        <div class="modal-box">
+            <div class="modal-header"><h3 id="mTitle">详情</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+            <div class="modal-body" id="mBody"></div>
+        </div>
+    </div>
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    var API='storageclasses', KIND='storageclass', SHOW_NS=false;
+    var ns=localStorage.getItem('k8s_ns')||'all';
+    var COLS=[{label:'名称',width:'200px',render:function(i){return escHtml(i.metadata.name)},mono:true},{label:'提供者',width:'150px',render:function(i){return escHtml(i.provisioner||'-')}},{label:'回收策略',width:'100px',render:function(i){return escHtml(i.reclaimPolicy||'-')}},{label:'绑定模式',width:'100px',render:function(i){return escHtml(i.volumeBindingMode||'-')}},{label:'默认',width:'60px',render:function(i){var a=i.metadata&&i.metadata.annotations;return (a&&a['storageclass.kubernetes.io/is-default-class']==='true')?'✅':'-'}}];
+    var ACTIONS=[
+        {label:'详情',cls:'btn-primary',handler:function(i){showDescribe(i)}},
+        {label:'删除',cls:'btn-danger',handler:function(i){doDelete(i)}}
+    ];
+    function onNSChange(){ns=document.getElementById('nsSelect').value;localStorage.setItem('k8s_ns',ns);load();}
+    function loadNS(){if(!SHOW_NS)return;fetchK8sAPI('api/namespaces').then(function(d){var s=document.getElementById('nsSelect');s.innerHTML='<option value="all">全部</option>';if(d.items)d.items.forEach(function(n){var o=document.createElement('option');o.value=n.metadata.name;o.textContent=n.metadata.name;if(o.value===ns)o.selected=true;s.appendChild(o);});}).catch(function(){});}
+    function load(){var p=ns!=='all'?'?namespace='+encodeURIComponent(ns):'';var t=document.getElementById('tbody');t.innerHTML='<tr><td colspan="10" class="loading">加载中...</td></tr>';var th=document.getElementById('thead');th.innerHTML='';if(SHOW_NS){var h=document.createElement('th');h.textContent='命名空间';th.appendChild(h);}COLS.forEach(function(c){var h=document.createElement('th');h.textContent=c.label;if(c.width)h.style.width=c.width;th.appendChild(h);});if(ACTIONS.length>0){var h=document.createElement('th');h.textContent='操作';h.style.width='200px';th.appendChild(h);}fetchK8sAPI('api/'+API+p).then(function(d){var items=d.items||[];document.getElementById('countBadge').textContent=items.length;if(!items.length){t.innerHTML='<tr><td colspan="10" style="text-align:center;padding:40px;color:#999">暂无数据</td></tr>';return;}t.innerHTML='';items.forEach(function(item){var tr=document.createElement('tr');if(SHOW_NS){var td=document.createElement('td');td.innerHTML='<span class="ns-badge">'+escHtml(item.metadata.namespace||'')+'</span>';tr.appendChild(td);}COLS.forEach(function(c){var td=document.createElement('td');var v=c.render(item);if(c.html)td.innerHTML=v;else td.textContent=v;if(c.mono)td.className='mono';tr.appendChild(td);});if(ACTIONS.length>0){var td=document.createElement('td');ACTIONS.forEach(function(a){var b=document.createElement('button');b.className='btn '+a.cls;b.textContent=a.label;b.onclick=function(){a.handler(item)};td.appendChild(b);});tr.appendChild(td);}t.appendChild(tr);});}).catch(function(e){t.innerHTML='<tr><td colspan="10"><div class="err">加载失败: '+escHtml(e.message)+'</div></td></tr>';});}
+    function showDescribe(item){var name=item.metadata.name;var ns2=item.metadata.namespace||'';showModal(KIND+' 详情 - '+name,'<div class="loading">加载中...</div>');fetch(K8S_BASE+'/api/describe?kind='+encodeURIComponent(KIND)+'&namespace='+encodeURIComponent(ns2)+'&name='+encodeURIComponent(name)).then(function(r){return r.text();}).then(function(t){document.getElementById('mBody').textContent=t;}).catch(function(e){document.getElementById('mBody').textContent='加载失败: '+e.message;});}
+    function doDelete(item){var name=item.metadata.name;var ns2=item.metadata.namespace||'';if(!confirm('确定删除 '+KIND+' "'+name+'"？'))return;fetch(K8S_BASE+'/api/delete?kind='+encodeURIComponent(KIND)+'&namespace='+encodeURIComponent(ns2)+'&name='+encodeURIComponent(name),{method:'DELETE'}).then(function(r){return r.json();}).then(function(){load();}).catch(function(e){alert('删除失败: '+e.message);});}
+    function doRestart(item){var name=item.metadata.name;var ns2=item.metadata.namespace||'';if(!confirm('确定重启 '+KIND+' "'+name+'"？'))return;fetch(K8S_BASE+'/api/restart?kind='+encodeURIComponent(KIND)+'&namespace='+encodeURIComponent(ns2)+'&name='+encodeURIComponent(name),{method:'POST'}).then(function(r){return r.json();}).then(function(){setTimeout(load,2000);}).catch(function(e){alert('重启失败: '+e.message);});}
+    function showModal(t,c){document.getElementById('mTitle').textContent=t;document.getElementById('mBody').innerHTML=c;document.getElementById('modal').classList.add('active');}
+    function closeModal(){document.getElementById('modal').classList.remove('active');}
+    document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+    loadNS();load();
+    </script>
+</body>
+</html>

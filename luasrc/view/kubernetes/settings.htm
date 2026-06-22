@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Kubernetes - 设置</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .card{background:#fff;border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:20px}
+        .card h3{color:#333;font-size:16px;margin-bottom:20px}
+        .form-group{margin-bottom:16px}
+        .form-group label{display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600}
+        .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box}
+        .form-group textarea{font-family:'Consolas',monospace;font-size:13px;min-height:200px;resize:vertical}
+        .btn{display:inline-block;padding:10px 20px;border-radius:6px;border:none;font-size:14px;cursor:pointer}
+        .btn-primary{background:#4a90d9;color:#fff}
+        .btn-primary:hover{background:#357abd}
+        .status-msg{padding:12px 16px;border-radius:6px;margin-top:12px;font-size:13px;display:none}
+        .status-msg.ok{display:block;background:#d4edda;color:#155724}
+        .status-msg.error{display:block;background:#f8d7da;color:#721c24}
+        .apply-section{margin-top:24px;padding-top:24px;border-top:1px solid #eee}
+        .apply-section h4{color:#333;margin-bottom:12px}
+    </style>
+</head>
+<body>
+    <div class="k8s-header"><h2>⚙️ 设置</h2></div>
+    <div class="card">
+        <h3>🔗 集群连接</h3>
+        <div class="form-group"><label>Kubeconfig 路径</label><input type="text" id="kubeconfig" value="/etc/kubernetes/admin.conf" placeholder="/etc/kubernetes/admin.conf"></div>
+        <div class="form-group"><label>默认命名空间</label><input type="text" id="defaultNs" value="default" placeholder="default"></div>
+        <div class="form-group"><label>自动刷新间隔（秒）</label><input type="number" id="refreshInterval" value="15" min="5" max="300"></div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+        <div id="statusMsg" class="status-msg"></div>
+    </div>
+    <div class="card">
+        <h3>📋 YAML 部署</h3>
+        <div class="form-group"><label>粘贴 YAML 配置</label><textarea id="yamlInput" placeholder="apiVersion: apps/v1&#10;kind: Deployment&#10;metadata:&#10;  name: my-app&#10;..."></textarea></div>
+        <button class="btn btn-primary" onclick="applyYaml()">🚀 应用部署</button>
+        <div id="applyMsg" class="status-msg"></div>
+    </div>
+    <div class="card">
+        <h3>📊 集群信息</h3>
+        <div id="clusterInfo" style="color:#666;font-size:14px;line-height:2">加载中...</div>
+    </div>
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    function saveSettings(){var d={kubeconfig:document.getElementById('kubeconfig').value,defaultNs:document.getElementById('defaultNs').value,refreshInterval:document.getElementById('refreshInterval').value};localStorage.setItem('k8s_settings',JSON.stringify(d));showMsg('statusMsg','ok','设置已保存（本地存储）');}
+    function applyYaml(){var yaml=document.getElementById('yamlInput').value;if(!yaml){showMsg('applyMsg','error','请输入 YAML 配置');return;}fetch(K8S_BASE+'/api/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'yaml='+encodeURIComponent(yaml)}).then(function(r){return r.json();}).then(function(d){if(d.error)showMsg('applyMsg','error',d.error);else showMsg('applyMsg','ok','部署成功: '+escHtml(d.detail));}).catch(function(e){showMsg('applyMsg','error','请求失败: '+e.message);});}
+    function showMsg(id,type,msg){var el=document.getElementById(id);el.textContent=msg;el.className='status-msg '+type;setTimeout(function(){el.className='status-msg';},8000);}
+    function loadClusterInfo(){fetchK8sAPI('api/nodes').then(function(d){var items=d.items||[];var html='<strong>节点数:</strong> '+items.length+'<br>';items.forEach(function(n){var v='-';if(n.status&&n.status.nodeInfo)v=n.status.nodeInfo.kubeletVersion;html+='&nbsp;&nbsp;🖥️ '+escHtml(n.metadata.name)+' ('+escHtml(v)+')<br>';});document.getElementById('clusterInfo').innerHTML=html;}).catch(function(e){document.getElementById('clusterInfo').innerHTML='<span style="color:#dc3545">连接失败: '+escHtml(e.message)+'</span>';});}
+    // Load saved settings
+    var saved=localStorage.getItem('k8s_settings');
+    if(saved){try{var s=JSON.parse(saved);document.getElementById('kubeconfig').value=s.kubeconfig||'/etc/kubernetes/admin.conf';document.getElementById('defaultNs').value=s.defaultNs||'default';document.getElementById('refreshInterval').value=s.refreshInterval||'15';}catch(e){}}
+    loadClusterInfo();
+    </script>
+</body>
+</html>

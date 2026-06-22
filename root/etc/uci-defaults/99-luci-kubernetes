@@ -1,0 +1,7 @@
+#!/bin/sh
+# Add kubernetes menu entry
+uci -q batch <<-EOF >/dev/null
+	set luci.main.mediaurlbase='/luci-static/bootstrap'
+	commit luci
+EOF
+exit 0

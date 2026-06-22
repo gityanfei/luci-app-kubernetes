@@ -1,0 +1,75 @@
+name: Build IPK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build IPK (${{ matrix.arch }})
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            target: x86_64
+            sdk_url: https://downloads.openwrt.org/releases/23.05.3/targets/x86/64/openwrt-sdk-23.05.3-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.zst
+            sdk_dir: openwrt-sdk-23.05.3-x86-64_gcc-12.3.0_musl.Linux-x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd
+
+      - name: Download OpenWrt SDK
+        run: |
+          wget -q ${{ matrix.sdk_url }} -O sdk.tar.zst
+          tar --zstd -xf sdk.tar.zst
+          mv ${{ matrix.sdk_dir }} sdk
+
+      - name: Setup feeds
+        working-directory: sdk
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Link package
+        working-directory: sdk
+        run: |
+          ln -sf $GITHUB_WORKSPACE package/feeds/luci/luci-app-kubernetes
+
+      - name: Build IPK
+        working-directory: sdk
+        run: |
+          make defconfig
+          make package/feeds/luci/luci-app-kubernetes/compile V=s
+
+      - name: Find IPK
+        id: find_ipk
+        run: |
+          IPK_PATH=$(find sdk/bin/packages/ -name "luci-app-kubernetes_*.ipk" | head -1)
+          echo "ipk_path=$IPK_PATH" >> $GITHUB_OUTPUT
+          echo "ipk_name=$(basename $IPK_PATH)" >> $GITHUB_OUTPUT
+
+      - name: Upload IPK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-kubernetes-${{ matrix.arch }}
+          path: ${{ steps.find_ipk.outputs.ipk_path }}
+
+      - name: Upload to Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.find_ipk.outputs.ipk_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

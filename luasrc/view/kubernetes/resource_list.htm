@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes - <%=page_title%></title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .ns-selector{display:flex;align-items:center;gap:8px}
+        .ns-selector label{font-size:13px;color:#666}
+        .ns-selector select{padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;min-width:150px}
+        .k8s-table-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden}
+        .k8s-table{width:100%;border-collapse:collapse}
+        .k8s-table th{text-align:left;padding:12px 16px;color:#666;font-size:12px;border-bottom:2px solid #eee;background:#f8f9fa;white-space:nowrap}
+        .k8s-table td{padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px}
+        .k8s-table tr:hover{background:#f8f9fa}
+        .k8s-table .mono{font-family:'Consolas','Monaco',monospace;font-size:12px;color:#333}
+        .k8s-table .ns-badge{display:inline-block;padding:2px 6px;border-radius:3px;background:#e3f2fd;color:#1976d2;font-size:11px;font-weight:600}
+        .status-running{color:#28a745;font-weight:600}
+        .status-pending{color:#ffc107;font-weight:600}
+        .status-failed{color:#dc3545;font-weight:600}
+        .btn{display:inline-block;padding:4px 10px;border-radius:4px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:12px;margin-right:4px;text-decoration:none}
+        .btn:hover{background:#f0f0f0}
+        .btn-danger{border-color:#dc3545;color:#dc3545}
+        .btn-danger:hover{background:#dc3545;color:#fff}
+        .btn-primary{border-color:#4a90d9;color:#4a90d9}
+        .btn-primary:hover{background:#4a90d9;color:#fff}
+        .btn-success{border-color:#28a745;color:#28a745}
+        .btn-success:hover{background:#28a745;color:#fff}
+        .loading{text-align:center;padding:40px;color:#999}
+        .error-msg{text-align:center;padding:20px;color:#dc3545;background:#f8d7da;border-radius:8px}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center}
+        .modal-overlay.active{display:flex}
+        .modal-box{background:#fff;border-radius:12px;width:90%;max-width:800px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
+        .modal-header{padding:16px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+        .modal-header h3{margin:0;color:#333;font-size:16px}
+        .modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0 8px}
+        .modal-close:hover{color:#dc3545}
+        .modal-body{padding:16px 24px;overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:13px;color:#333;white-space:pre-wrap;word-break:break-all;background:#f8f9fa}
+        .refresh-bar{padding:12px 16px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px}
+        .count-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1976d2;font-size:12px;font-weight:600;margin-left:8px}
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2><%=page_icon%> <%=page_title%><span class="count-badge" id="countBadge">0</span></h2>
+        <div style="display:flex;align-items:center;gap:12px">
+            <div class="ns-selector">
+                <label>命名空间:</label>
+                <select id="namespaceSelect" onchange="onNamespaceChange()">
+                    <option value="all">全部</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadData()">🔄 刷新</button>
+        </div>
+    </div>
+
+    <div class="k8s-table-wrap">
+        <table class="k8s-table">
+            <thead>
+                <tr id="tableHead"></tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="10" class="loading">加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalTitle">详情</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    var RESOURCE_API = '<%=resource_api%>';
+    var RESOURCE_KIND = '<%=resource_kind%>';
+    var RESOURCE_COLS = <%=resource_cols_json%>;
+    var RESOURCE_ACTIONS = <%=resource_actions_json%>;
+    var currentNS = localStorage.getItem('k8s_ns') || 'all';
+
+    function onNamespaceChange() {
+        currentNS = document.getElementById('namespaceSelect').value;
+        localStorage.setItem('k8s_ns', currentNS);
+        loadData();
+    }
+
+    function loadNamespaces() {
+        fetchK8sAPI('api/namespaces').then(function(data) {
+            var sel = document.getElementById('namespaceSelect');
+            sel.innerHTML = '<option value="all">全部</option>';
+            if (data.items) {
+                data.items.forEach(function(ns) {
+                    var opt = document.createElement('option');
+                    opt.value = ns.metadata.name;
+                    opt.textContent = ns.metadata.name;
+                    if (opt.value === currentNS) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            }
+        }).catch(function() {});
+    }
+
+    function loadData() {
+        var params = currentNS !== 'all' ? '?namespace=' + encodeURIComponent(currentNS) : '';
+        var tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">加载中...</td></tr>';
+
+        fetchK8sAPI('api/' + RESOURCE_API + params).then(function(data) {
+            var items = data.items || [];
+            document.getElementById('countBadge').textContent = items.length;
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#999">暂无数据</td></tr>';
+                return;
+            }
+
+            // Build head
+            var headRow = document.getElementById('tableHead');
+            headRow.innerHTML = '';
+            RESOURCE_COLS.forEach(function(col) {
+                var th = document.createElement('th');
+                th.textContent = col.label;
+                if (col.width) th.style.width = col.width;
+                headRow.appendChild(th);
+            });
+            if (RESOURCE_ACTIONS.length > 0) {
+                var th = document.createElement('th');
+                th.textContent = '操作';
+                th.style.width = '200px';
+                headRow.appendChild(th);
+            }
+
+            // Build body
+            tbody.innerHTML = '';
+            items.forEach(function(item) {
+                var tr = document.createElement('tr');
+                RESOURCE_COLS.forEach(function(col) {
+                    var td = document.createElement('td');
+                    var val = col.render ? col.render(item) : '';
+                    if (col.html) {
+                        td.innerHTML = val;
+                    } else {
+                        td.textContent = val;
+                    }
+                    if (col.mono) td.className = 'mono';
+                    tr.appendChild(td);
+                });
+                if (RESOURCE_ACTIONS.length > 0) {
+                    var td = document.createElement('td');
+                    RESOURCE_ACTIONS.forEach(function(act) {
+                        var btn = document.createElement('button');
+                        btn.className = 'btn ' + (act.cls || '');
+                        btn.textContent = act.label;
+                        btn.onclick = function() { act.handler(item); };
+                        td.appendChild(btn);
+                    });
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+        }).catch(function(err) {
+            tbody.innerHTML = '<tr><td colspan="10"><div class="error-msg">加载失败: ' + escHtml(err.message) + '</div></td></tr>';
+        });
+    }
+
+    function showDescribe(kind, ns, name) {
+        showModal(kind + ' 详情 - ' + name, '<div class="loading">加载中...</div>');
+        fetch(K8S_BASE + '/api/describe?kind=' + encodeURIComponent(kind) + '&namespace=' + encodeURIComponent(ns) + '&name=' + encodeURIComponent(name))
+            .then(function(r) { return r.text(); })
+            .then(function(text) {
+                document.getElementById('modalBody').textContent = text;
+            })
+            .catch(function(err) {
+                document.getElementById('modalBody').textContent = '加载失败: ' + err.message;
+            });
+    }
+
+    function showDelete(kind, ns, name) {
+        if (!confirm('确定删除 ' + kind + ' "' + name + '"？')) return;
+        fetch(K8S_BASE + '/api/delete?kind=' + encodeURIComponent(kind) + '&namespace=' + encodeURIComponent(ns) + '&name=' + encodeURIComponent(name), { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                showStatus('ok', '已删除: ' + name);
+                loadData();
+            })
+            .catch(function(err) {
+                showStatus('error', '删除失败: ' + err.message);
+            });
+    }
+
+    function showRestart(kind, ns, name) {
+        if (!confirm('确定重启 ' + kind + ' "' + name + '"？')) return;
+        fetch(K8S_BASE + '/api/restart?kind=' + encodeURIComponent(kind) + '&namespace=' + encodeURIComponent(ns) + '&name=' + encodeURIComponent(name), { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                showStatus('ok', '已重启: ' + name);
+                setTimeout(loadData, 2000);
+            })
+            .catch(function(err) {
+                showStatus('error', '重启失败: ' + err.message);
+            });
+    }
+
+    loadNamespaces();
+    loadData();
+    </script>
+</body>
+</html>

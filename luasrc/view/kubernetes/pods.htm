@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes - Pods</title>
+    <link rel="stylesheet" href="/luci-static/resources/style.css">
+    <style>
+        .k8s-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        .k8s-header h2{margin:0;color:#333;font-size:18px}
+        .ns-selector{display:flex;align-items:center;gap:8px}
+        .ns-selector label{font-size:13px;color:#666}
+        .ns-selector select{padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;min-width:150px}
+        .k8s-table-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden}
+        .k8s-table{width:100%;border-collapse:collapse}
+        .k8s-table th{text-align:left;padding:12px 16px;color:#666;font-size:12px;border-bottom:2px solid #eee;background:#f8f9fa;white-space:nowrap}
+        .k8s-table td{padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px}
+        .k8s-table tr:hover{background:#f8f9fa}
+        .k8s-table .mono{font-family:'Consolas','Monaco',monospace;font-size:12px;color:#333}
+        .ns-badge{display:inline-block;padding:2px 6px;border-radius:3px;background:#e3f2fd;color:#1976d2;font-size:11px;font-weight:600}
+        .st-running{color:#28a745;font-weight:600}
+        .st-pending{color:#ffc107;font-weight:600}
+        .st-failed{color:#dc3545;font-weight:600}
+        .st-unknown{color:#999}
+        .btn{display:inline-block;padding:4px 10px;border-radius:4px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:12px;margin-right:4px;text-decoration:none}
+        .btn:hover{background:#f0f0f0}
+        .btn-danger{border-color:#dc3545;color:#dc3545}
+        .btn-danger:hover{background:#dc3545;color:#fff}
+        .btn-primary{border-color:#4a90d9;color:#4a90d9}
+        .btn-primary:hover{background:#4a90d9;color:#fff}
+        .btn-success{border-color:#28a745;color:#28a745}
+        .btn-success:hover{background:#28a745;color:#fff}
+        .loading{text-align:center;padding:40px;color:#999}
+        .err{text-align:center;padding:20px;color:#dc3545;background:#f8d7da;border-radius:8px}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center}
+        .modal-overlay.active{display:flex}
+        .modal-box{background:#fff;border-radius:12px;width:90%;max-width:900px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column}
+        .modal-header{padding:16px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+        .modal-header h3{margin:0;color:#333;font-size:16px}
+        .modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0 8px}
+        .modal-close:hover{color:#dc3545}
+        .modal-body{padding:16px 24px;overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:13px;color:#333;white-space:pre-wrap;word-break:break-all;background:#f8f9fa}
+        .count-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1976d2;font-size:12px;font-weight:600;margin-left:8px}
+        .status-msg{padding:8px 16px;border-radius:6px;margin-bottom:12px;font-size:13px;display:none}
+        .status-msg.ok{display:block;background:#d4edda;color:#155724}
+        .status-msg.error{display:block;background:#f8d7da;color:#721c24}
+    </style>
+</head>
+<body>
+    <div class="k8s-header">
+        <h2>📦 Pods<span class="count-badge" id="countBadge">0</span></h2>
+        <div style="display:flex;align-items:center;gap:12px">
+            <div class="ns-selector">
+                <label>命名空间:</label>
+                <select id="nsSelect" onchange="onNSChange()">
+                    <option value="all">全部</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="load()">🔄 刷新</button>
+        </div>
+    </div>
+    <div id="statusMsg" class="status-msg"></div>
+    <div class="k8s-table-wrap">
+        <table class="k8s-table">
+            <thead><tr><th>命名空间</th><th>名称</th><th>就绪</th><th>状态</th><th>重启</th><th>IP</th><th>节点</th><th>运行时间</th><th>操作</th></tr></thead>
+            <tbody id="tbody"><tr><td colspan="9" class="loading">加载中...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="modal-overlay" id="modal">
+        <div class="modal-box">
+            <div class="modal-header"><h3 id="mTitle">详情</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+            <div class="modal-body" id="mBody"></div>
+        </div>
+    </div>
+
+    <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
+    <script>
+    var ns = localStorage.getItem('k8s_ns') || 'all';
+    function onNSChange(){ns=document.getElementById('nsSelect').value;localStorage.setItem('k8s_ns',ns);load();}
+    function loadNS(){fetchK8sAPI('api/namespaces').then(function(d){var s=document.getElementById('nsSelect');s.innerHTML='<option value="all">全部</option>';if(d.items)d.items.forEach(function(n){var o=document.createElement('option');o.value=n.metadata.name;o.textContent=n.metadata.name;if(o.value===ns)o.selected=true;s.appendChild(o);});}).catch(function(){});}
+    function load(){var p=ns!=='all'?'?namespace='+encodeURIComponent(ns):'';var t=document.getElementById('tbody');t.innerHTML='<tr><td colspan="9" class="loading">加载中...</td></tr>';fetchK8sAPI('api/pods'+p).then(function(d){var items=d.items||[];document.getElementById('countBadge').textContent=items.length;if(!items.length){t.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:#999">暂无数据</td></tr>';return;}t.innerHTML='';items.forEach(function(p){var tr=document.createElement('tr');var ns2=p.metadata.namespace||'';var nm=p.metadata.name||'';var ready='-';var status='-';var restarts=0;var ip='-';var node='-';if(p.status){status=p.status.phase||'-';var conds=p.status.conditions||[];var readyN=0,totalN=0;if(p.status.containerStatuses){totalN=p.status.containerStatuses.length;p.status.containerStatuses.forEach(function(c){if(c.ready)readyN++;restarts+=c.restartCount||0;});ready=readyN+'/'+totalN;}ip=p.status.podIP||'-';node=p.spec?p.spec.nodeName:'-';}var sc='st-unknown';if(status==='Running')sc='st-running';else if(status==='Pending')sc='st-pending';else if(status==='Failed'||status==='Unknown')sc='st-failed';tr.innerHTML='<td><span class="ns-badge">'+escHtml(ns2)+'</span></td><td class="mono">'+escHtml(nm)+'</td><td>'+escHtml(ready)+'</td><td><span class="'+sc+'">'+escHtml(status)+'</span></td><td>'+restarts+'</td><td class="mono">'+escHtml(ip)+'</td><td class="mono">'+escHtml(node)+'</td><td>'+getAge(p)+'</td><td><button class="btn btn-primary" onclick="showLogs(\''+escHtml(ns2)+'\',\''+escHtml(nm)+'\')">日志</button><button class="btn btn-primary" onclick="showDesc(\''+escHtml(ns2)+'\',\''+escHtml(nm)+'\')">详情</button><button class="btn btn-danger" onclick="delPod(\''+escHtml(ns2)+'\',\''+escHtml(nm)+'\')">删除</button></td>';t.appendChild(tr);});}).catch(function(e){t.innerHTML='<tr><td colspan="9"><div class="err">加载失败: '+escHtml(e.message)+'</div></td></tr>';});}
+    function showLogs(n,nm){showModal('日志 - '+n+'/'+nm,'<div class="loading">加载中...</div>');fetch(K8S_BASE+'/api/logs?namespace='+encodeURIComponent(n)+'&name='+encodeURIComponent(nm)+'&tail=300').then(function(r){return r.text();}).then(function(t){document.getElementById('mBody').innerHTML=t.split('\n').map(function(l){return '<div>'+escHtml(l)+'</div>';}).join('');}).catch(function(e){document.getElementById('mBody').textContent='加载失败: '+e.message;});}
+    function showDesc(n,nm){showModal('详情 - '+n+'/'+nm,'<div class="loading">加载中...</div>');fetch(K8S_BASE+'/api/describe?kind=pod&namespace='+encodeURIComponent(n)+'&name='+encodeURIComponent(nm)).then(function(r){return r.text();}).then(function(t){document.getElementById('mBody').textContent=t;}).catch(function(e){document.getElementById('mBody').textContent='加载失败: '+e.message;});}
+    function delPod(n,nm){if(!confirm('确定删除 Pod "'+nm+'"？'))return;fetch(K8S_BASE+'/api/delete?kind=pod&namespace='+encodeURIComponent(n)+'&name='+encodeURIComponent(nm),{method:'DELETE'}).then(function(r){return r.json();}).then(function(){showMsg('ok','已删除: '+nm);load();}).catch(function(e){showMsg('error','删除失败: '+e.message);});}
+    function showMsg(t,m){var el=document.getElementById('statusMsg');el.textContent=m;el.className='status-msg '+t;setTimeout(function(){el.className='status-msg';},5000);}
+    function showModal(t,c){document.getElementById('mTitle').textContent=t;document.getElementById('mBody').innerHTML=c;document.getElementById('modal').classList.add('active');}
+    function closeModal(){document.getElementById('modal').classList.remove('active');}
+    document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+    loadNS();load();
+    </script>
+</body>
+</html>
