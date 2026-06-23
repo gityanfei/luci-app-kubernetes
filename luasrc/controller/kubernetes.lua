@@ -347,8 +347,27 @@ end
 -- Top nodes
 function action_top_nodes()
     local output = exec_cmd("KUBECONFIG=" .. get_kubeconfig() .. " kubectl top nodes --no-headers 2>/dev/null")
+    local nodes = {}
+    for line in output:gmatch('[^\n]+') do
+        line = line:gsub('^%s+', ''):gsub('%s+$', '')
+        if line ~= '' then
+            local f = {}
+            for word in line:gmatch('%S+') do
+                table.insert(f, word)
+            end
+            if #f >= 5 then
+                table.insert(nodes, {
+                    name = f[1],
+                    cpu = f[2],
+                    cpuPct = tonumber((f[3]:gsub('%%', ''))) or 0,
+                    mem = f[4],
+                    memPct = tonumber((f[5]:gsub('%%', ''))) or 0
+                })
+            end
+        end
+    end
     http.prepare_content("application/json")
-    http.write_json({nodes = output})
+    http.write_json({nodes = nodes})
 end
 
 -- Settings: get current config and history

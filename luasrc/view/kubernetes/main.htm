@@ -340,8 +340,13 @@ function loadNodes(el,bd){
     bd.textContent='';el.innerHTML='<div class="k8s-loading">加载中...</div>';
     var topMap={};
     fetch(K8S+'/k8s_top_nodes').then(function(r){return r.json();}).then(function(td){
-        var lines=(td.nodes||'').trim().split('\n').filter(function(l){return l.trim();});
-        lines.forEach(function(line){var f=line.trim().split(/\s+/);if(f.length>=5)topMap[f[0]]={cpu:f[1],cpuPct:f[2],mem:f[3],memPct:f[4]};});
+        var topData=td.nodes||[];
+        if(Array.isArray(topData)){
+            topData.forEach(function(n){topMap[n.name]={cpu:n.cpu,cpuPct:n.cpuPct,mem:n.mem,memPct:n.memPct};});
+        } else {
+            var lines=(topData||'').trim().split('\n').filter(function(l){return l.trim();});
+            lines.forEach(function(line){var f=line.trim().split(/\s+/);if(f.length>=5)topMap[f[0]]={cpu:f[1],cpuPct:f[2],mem:f[3],memPct:f[4]};});
+        }
         renderNodesTable(el,topMap);
     }).catch(function(){renderNodesTable(el,{});});
 }
@@ -431,17 +436,17 @@ function renderNodesTableInner(el,items,topMap,podStats){
         var reqCpu=reqCpuM>0?formatCpuM(reqCpuM):'-';
         var t=topMap[name]||{};
         var useCpu=t.cpu?t.cpu:'-';
-        var useCpuPct=t.cpuPct?parseInt(String(t.cpuPct).replace('%','')):0;
+        var useCpuPct=(t.cpuPct!=null)?(typeof t.cpuPct==='number'?t.cpuPct:parseInt(String(t.cpuPct).replace('%',''))):0;
         var cpuBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useCpuPct,100)+'%;background:'+(useCpuPct>80?'#ff4d4f':useCpuPct>50?'#faad14':'#52c41a')+';border-radius:2px"></div></div>';
         html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqCpu)+'</div>';
-        html+='<div style="font-size:12px;color:#666">使用: '+esc(useCpu)+' ('+esc(t.cpuPct||'0%')+')'+cpuBar+'</div></td>';
+        html+='<div style="font-size:12px;color:#666">使用: '+esc(useCpu)+' ('+useCpuPct+'%'+')'+cpuBar+'</div></td>';
         var reqMemMi=ps.reqMemMi||0;
         var reqMem=reqMemMi>0?formatMemMi(reqMemMi):'-';
         var useMem=t.mem?t.mem:'-';
-        var useMemPct=t.memPct?parseInt(String(t.memPct).replace('%','')):0;
+        var useMemPct=(t.memPct!=null)?(typeof t.memPct==='number'?t.memPct:parseInt(String(t.memPct).replace('%',''))):0;
         var memBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useMemPct,100)+'%;background:'+(useMemPct>80?'#ff4d4f':useMemPct>50?'#faad14':'#1890ff')+';border-radius:2px"></div></div>';
         html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqMem)+'</div>';
-        html+='<div style="font-size:12px;color:#666">使用: '+esc(useMem)+' ('+esc(t.memPct||'0%')+')'+memBar+'</div></td>';
+        html+='<div style="font-size:12px;color:#666">使用: '+esc(useMem)+' ('+useMemPct+'%'+')'+memBar+'</div></td>';
         var ni=n.status&&n.status.nodeInfo||{};
         html+='<td style="vertical-align:top"><div style="line-height:1.5">'+esc(ni.kubeletVersion||'-');
         html+='<br><span style="font-size:11px;color:#999">'+esc(ni.containerRuntimeVersion||'')+'<br>'+esc(ni.osImage||'')+'</span></div></td>';
