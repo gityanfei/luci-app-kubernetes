@@ -346,81 +346,113 @@ function loadNodes(el,bd){
     }).catch(function(){renderNodesTable(el,{});});
 }
 
+function parseCpu(v){
+    v=String(v);if(v.endsWith('m'))return parseFloat(v)||0;return(parseFloat(v)||0)*1000;
+}
+function parseMem(v){
+    v=String(v);
+    if(v.endsWith('Ki'))return(parseFloat(v)||0)/1024;
+    if(v.endsWith('Mi'))return parseFloat(v)||0;
+    if(v.endsWith('Gi'))return(parseFloat(v)||0)*1024;
+    if(v.endsWith('Ti'))return(parseFloat(v)||0)*1024*1024;
+    return(parseFloat(v)||0)/1048576;
+}
+function formatCpuM(m){if(m>=1000)return(m/1000).toFixed(1)+' vCPU';return m.toFixed(0)+'m';}
+function formatMemMi(mi){if(mi>=1024)return(mi/1024).toFixed(1)+' Gi';return mi.toFixed(0)+' Mi';}
+
 function renderNodesTable(el,topMap){
     fetch(K8S+'/k8s_nodes').then(function(r){return r.json();}).then(function(nd){
         var items=(nd.items||[]);
         if(!items.length){el.innerHTML='<div class="k8s-empty">暂无节点</div>';return;}
-        var html='<div class="k8s-table-wrap"><table class="k8s-table"><thead><tr>';
-        html+='<th style="min-width:200px">名称/IP地址/实例ID</th>';
-        html+='<th style="min-width:90px">状态/Condition</th>';
-        html+='<th style="min-width:120px">配置</th>';
-        html+='<th style="min-width:100px">容器组(已分配/总配额)</th>';
-        html+='<th style="min-width:110px">CPU<br><span style="font-weight:400;font-size:11px">请求/使用</span></th>';
-        html+='<th style="min-width:110px">内存<br><span style="font-weight:400;font-size:11px">请求/使用</span></th>';
-        html+='<th style="min-width:150px">Kubelet版本/Runtime版本/OS版本</th>';
-        html+='<th style="min-width:100px">创建时间</th>';
-        html+='<th style="min-width:80px">操作</th>';
-        html+='</tr></thead><tbody>';
-        items.forEach(function(n){
-            html+='<tr>';
-            var name=n.metadata&&n.metadata.name||'-';
-            var ann=n.metadata&&n.metadata.annotations||{};
-            var lb=n.metadata&&n.metadata.labels||{};
-            // Name/IP/Instance
-            var ip='-';if(n.status&&n.status.addresses)n.status.addresses.forEach(function(a){if(a.type==='InternalIP')ip=a.address;});
-            var iid=ann['csi.alibabacloud.com/instance-id']||ann['alibabacloud.com/ecs-instance-id']||'';
-            html+='<td style="vertical-align:top"><div style="line-height:1.5">'+esc(name);
-            html+='<br><span style="font-size:11px;color:#999">'+esc(ip)+'</span>';
-            if(iid)html+='<br><span style="font-size:11px;color:#999">'+esc(iid)+'</span>';
-            html+='</div></td>';
-            // Status/Condition
-            var st='NotReady';
-            if(n.status&&n.status.conditions)n.status.conditions.forEach(function(c){if(c.type==='Ready'&&c.status==='True')st='Ready';});
-            var condHtml='';
-            if(n.status&&n.status.conditions){var rc=[];n.status.conditions.forEach(function(c){if(c.type==='Ready')rc.push('<span class="k8s-st-'+(c.status==='True'?'running':'failed')+'" style="font-size:11px">'+c.status+'</span>');});if(rc.length)condHtml='<br>'+rc.join(' ');};
-            html+='<td style="vertical-align:top"><span class="k8s-st-'+(st==='Ready'?'running':'failed')+'" style="font-weight:600">● '+esc(st)+'</span>'+condHtml+'</td>';
-            // Config - instance type, cpu/mem capacity, zone
-            var itype=lb['node.kubernetes.io/instance-type']||'';
-            var cpu=n.status&&n.status.capacity&&n.status.capacity.cpu?n.status.capacity.cpu+' vCPU':'';
-            var mem=n.status&&n.status.capacity&&n.status.capacity.memory?n.status.capacity.memory:'';
-            var zone=lb['failure-domain.beta.kubernetes.io/zone']||lb['topology.kubernetes.io/zone']||'';
-            html+='<td style="vertical-align:top"><div style="line-height:1.5">'+(itype||'按量付费');
-            if(cpu||mem)html+='<br><span style="font-size:11px;color:#999">'+esc(cpu)+' '+esc(mem)+'</span>';
-            if(zone)html+='<br><span style="font-size:11px;color:#999">'+esc(zone)+'</span>';
-            html+='</div></td>';
-            // Pods allocatable/total
-            var alloc=n.status&&n.status.allocatable&&n.status.allocatable.pods?n.status.allocatable.pods:'-';
-            var total=n.status&&n.status.capacity&&n.status.capacity.pods?n.status.capacity.pods:'-';
-            html+='<td style="vertical-align:top">'+esc(alloc)+'/'+esc(total)+'</td>';
-            // CPU - request + usage
-            var reqCpu=ann['node.alpha.kubernetes.io/requested-cpu']||'-';
-            var t=topMap[name]||{};
-            var useCpu=t.cpu?t.cpu:'-';
-            var useCpuPct=t.cpuPct?parseInt(String(t.cpuPct).replace('%','')):0;
-            var cpuBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useCpuPct,100)+'%;background:'+(useCpuPct>80?'#ff4d4f':useCpuPct>50?'#faad14':'#52c41a')+';border-radius:2px"></div></div>';
-            html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqCpu)+'</div>';
-            html+='<div style="font-size:12px;color:#666">使用: '+esc(useCpu)+' ('+esc(t.cpuPct||'0%')+')'+cpuBar+'</div></td>';
-            // Memory - request + usage
-            var reqMem=ann['node.alpha.kubernetes.io/requested-memory']||'-';
-            var useMem=t.mem?t.mem:'-';
-            var useMemPct=t.memPct?parseInt(String(t.memPct).replace('%','')):0;
-            var memBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useMemPct,100)+'%;background:'+(useMemPct>80?'#ff4d4f':useMemPct>50?'#faad14':'#1890ff')+';border-radius:2px"></div></div>';
-            html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqMem)+'</div>';
-            html+='<div style="font-size:12px;color:#666">使用: '+esc(useMem)+' ('+esc(t.memPct||'0%')+')'+memBar+'</div></td>';
-            // Kubelet/Runtime/OS
-            var ni=n.status&&n.status.nodeInfo||{};
-            html+='<td style="vertical-align:top"><div style="line-height:1.5">'+esc(ni.kubeletVersion||'-');
-            html+='<br><span style="font-size:11px;color:#999">'+esc(ni.containerRuntimeVersion||'')+'<br>'+esc(ni.osImage||'')+'</span></div></td>';
-            // Creation time
-            html+='<td style="vertical-align:top">'+age(n)+'</td>';
-            // Actions
-            html+='<td style="vertical-align:top;white-space:nowrap"><button class="k8s-act-btn primary" onclick="window.showNodeYAML(\''+esc(name)+'\')">YAML</button> <button class="k8s-act-btn" onclick="window.showNodeDescribe(\''+esc(name)+'\')">详情</button> <button class="k8s-act-btn danger" onclick="window.doDeleteNode(\''+esc(name)+'\')">删除</button></td>';
-            html+='</tr>';
-        });
-        html+='</tbody></table></div>';
-        el.innerHTML=html;
+        var nameSet={};items.forEach(function(n){if(n.metadata&&n.metadata.name)nameSet[n.metadata.name]=true;});
+        var podStats={};
+        fetch(K8S+'/k8s_pods?namespace=all').then(function(r){return r.json();}).then(function(pd){
+            var pods=pd.items||[];
+            pods.forEach(function(p){
+                var nodeName=(p.spec||{}).nodeName||'';
+                if(!nameSet[nodeName])return;
+                var phase=(p.status||{}).phase||'';
+                if(phase==='Running'){
+                    if(!podStats[nodeName])podStats[nodeName]={count:0,reqCpuM:0,reqMemMi:0};
+                    podStats[nodeName].count++;
+                    (p.spec&&p.spec.containers||[]).forEach(function(c){
+                        var res=(c.resources&&c.resources&&c.resources.requests)||{};
+                        if(res.cpu)podStats[nodeName].reqCpuM+=parseCpu(res.cpu);
+                        if(res.memory)podStats[nodeName].reqMemMi+=parseMem(res.memory);
+                    });
+                }
+            });
+            renderNodesTableInner(el,items,topMap,podStats);
+        }).catch(function(){renderNodesTableInner(el,items,topMap,{});});
     }).catch(function(e){el.innerHTML='<div class="k8s-empty">加载失败: '+esc(e.message)+'</div>';});
 }
+
+function renderNodesTableInner(el,items,topMap,podStats){
+    var html='<div class="k8s-table-wrap"><table class="k8s-table"><thead><tr>';
+    html+='<th style="min-width:200px">名称/IP地址/实例ID</th>';
+    html+='<th style="min-width:90px">状态/Condition</th>';
+    html+='<th style="min-width:120px">配置</th>';
+    html+='<th style="min-width:100px">容器组(已运行/总配额)</th>';
+    html+='<th style="min-width:110px">CPU<br><span style="font-weight:400;font-size:11px">请求/使用</span></th>';
+    html+='<th style="min-width:110px">内存<br><span style="font-weight:400;font-size:11px">请求/使用</span></th>';
+    html+='<th style="min-width:150px">Kubelet版本/Runtime版本/OS版本</th>';
+    html+='<th style="min-width:100px">创建时间</th>';
+    html+='<th style="min-width:80px">操作</th>';
+    html+='</tr></thead><tbody>';
+    items.forEach(function(n){
+        html+='<tr>';
+        var name=n.metadata&&n.metadata.name||'-';
+        var ann=n.metadata&&n.metadata.annotations||{};
+        var lb=n.metadata&&n.metadata.labels||{};
+        var ip='-';if(n.status&&n.status.addresses)n.status.addresses.forEach(function(a){if(a.type==='InternalIP')ip=a.address;});
+        var iid=ann['csi.alibabacloud.com/instance-id']||ann['alibabacloud.com/ecs-instance-id']||'';
+        html+='<td style="vertical-align:top"><div style="line-height:1.5">'+esc(name);
+        html+='<br><span style="font-size:11px;color:#999">'+esc(ip)+'</span>';
+        if(iid)html+='<br><span style="font-size:11px;color:#999">'+esc(iid)+'</span>';
+        html+='</div></td>';
+        var st='NotReady';
+        if(n.status&&n.status.conditions)n.status.conditions.forEach(function(c){if(c.type==='Ready'&&c.status==='True')st='Ready';});
+        var condHtml='';
+        if(n.status&&n.status.conditions){var rc=[];n.status.conditions.forEach(function(c){if(c.type==='Ready')rc.push('<span class="k8s-st-'+(c.status==='True'?'running':'failed')+'" style="font-size:11px">'+c.status+'</span>');});if(rc.length)condHtml='<br>'+rc.join(' ');};
+        html+='<td style="vertical-align:top"><span class="k8s-st-'+(st==='Ready'?'running':'failed')+'" style="font-weight:600">● '+esc(st)+'</span>'+condHtml+'</td>';
+        var itype=lb['node.kubernetes.io/instance-type']||'';
+        var cpu=n.status&&n.status.capacity&&n.status.capacity.cpu?n.status.capacity.cpu+' vCPU':'';
+        var mem=n.status&&n.status.capacity&&n.status.capacity.memory?n.status.capacity.memory:'';
+        var zone=lb['failure-domain.beta.kubernetes.io/zone']||lb['topology.kubernetes.io/zone']||'';
+        html+='<td style="vertical-align:top"><div style="line-height:1.5">'+(itype||'-');
+        if(cpu||mem)html+='<br><span style="font-size:11px;color:#999">'+esc(cpu)+' '+esc(mem)+'</span>';
+        if(zone)html+='<br><span style="font-size:11px;color:#999">'+esc(zone)+'</span>';
+        html+='</div></td>';
+        var ps=podStats[name]||{};
+        var runningCount=ps.count||0;
+        var totalCap=(n.status&&n.status.capacity&&n.status.capacity.pods)?n.status.capacity.pods:'-';
+        html+='<td style="vertical-align:top">'+runningCount+'/'+esc(totalCap)+'</td>';
+        var reqCpuM=ps.reqCpuM||0;
+        var reqCpu=reqCpuM>0?formatCpuM(reqCpuM):'-';
+        var t=topMap[name]||{};
+        var useCpu=t.cpu?t.cpu:'-';
+        var useCpuPct=t.cpuPct?parseInt(String(t.cpuPct).replace('%','')):0;
+        var cpuBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useCpuPct,100)+'%;background:'+(useCpuPct>80?'#ff4d4f':useCpuPct>50?'#faad14':'#52c41a')+';border-radius:2px"></div></div>';
+        html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqCpu)+'</div>';
+        html+='<div style="font-size:12px;color:#666">使用: '+esc(useCpu)+' ('+esc(t.cpuPct||'0%')+')'+cpuBar+'</div></td>';
+        var reqMemMi=ps.reqMemMi||0;
+        var reqMem=reqMemMi>0?formatMemMi(reqMemMi):'-';
+        var useMem=t.mem?t.mem:'-';
+        var useMemPct=t.memPct?parseInt(String(t.memPct).replace('%','')):0;
+        var memBar='<div style="height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px"><div style="height:100%;width:'+Math.min(useMemPct,100)+'%;background:'+(useMemPct>80?'#ff4d4f':useMemPct>50?'#faad14':'#1890ff')+';border-radius:2px"></div></div>';
+        html+='<td style="vertical-align:top"><div style="line-height:1.5;font-size:12px">请求: '+esc(reqMem)+'</div>';
+        html+='<div style="font-size:12px;color:#666">使用: '+esc(useMem)+' ('+esc(t.memPct||'0%')+')'+memBar+'</div></td>';
+        var ni=n.status&&n.status.nodeInfo||{};
+        html+='<td style="vertical-align:top"><div style="line-height:1.5">'+esc(ni.kubeletVersion||'-');
+        html+='<br><span style="font-size:11px;color:#999">'+esc(ni.containerRuntimeVersion||'')+'<br>'+esc(ni.osImage||'')+'</span></div></td>';
+        html+='<td style="vertical-align:top">'+age(n)+'</td>';
+        html+='<td style="vertical-align:top;white-space:nowrap"><button class="k8s-act-btn primary" onclick="window.showNodeYAML(\''+esc(name)+'\')">YAML</button> <button class="k8s-act-btn" onclick="window.showNodeDescribe(\''+esc(name)+'\')">详情</button> <button class="k8s-act-btn danger" onclick="window.doDeleteNode(\''+esc(name)+'\')">删除</button></td>';
+        html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+    el.innerHTML=html;
+}
+
 
 window.showNodeYAML=function(name){
     document.getElementById('k8sYamlTitle').textContent='节点详情 - '+name;
