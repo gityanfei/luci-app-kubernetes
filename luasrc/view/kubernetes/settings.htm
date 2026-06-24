@@ -45,10 +45,23 @@
     </div>
     <script src="/luci-static/resources/view/kubernetes/k8s-common.js"></script>
     <script>
-    function saveSettings(){var d={kubeconfig:document.getElementById('kubeconfig').value,defaultNs:document.getElementById('defaultNs').value,refreshInterval:document.getElementById('refreshInterval').value};localStorage.setItem('k8s_settings',JSON.stringify(d));showMsg('statusMsg','ok','设置已保存（本地存储）');}
-    function applyYaml(){var yaml=document.getElementById('yamlInput').value;if(!yaml){showMsg('applyMsg','error','请输入 YAML 配置');return;}fetch(K8S_BASE+'/api/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'yaml='+encodeURIComponent(yaml)}).then(function(r){return r.json();}).then(function(d){if(d.error)showMsg('applyMsg','error',d.error);else showMsg('applyMsg','ok','部署成功: '+escHtml(d.detail));}).catch(function(e){showMsg('applyMsg','error','请求失败: '+e.message);});}
+    // Save settings to both localStorage and server API
+    function saveSettings(){
+        var d={kubeconfig:document.getElementById('kubeconfig').value,defaultNs:document.getElementById('defaultNs').value,refreshInterval:document.getElementById('refreshInterval').value};
+        // 1. Save to localStorage (for settings page)
+        localStorage.setItem('k8s_settings',JSON.stringify(d));
+        // 2. Save to server API (for main SPA page)
+        var kc=d.kubeconfig;
+        if(kc){
+            fetch('/cgi-bin/luci/admin/services/kubernetes/k8s_settings_save',{method:'POST',body:'kubeconfig='+encodeURIComponent(kc),headers:{'Content-Type':'application/x-www-form-urlencoded'}})
+            .then(function(r){return r.json();})
+            .catch(function(){});
+        }
+        showMsg('statusMsg','ok','设置已保存');
+    }
+    function applyYaml(){var yaml=document.getElementById('yamlInput').value;if(!yaml){showMsg('applyMsg','error','请输入 YAML 配置');return;}fetch('/cgi-bin/luci/admin/services/kubernetes/k8s_apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'yaml='+encodeURIComponent(yaml)}).then(function(r){return r.json();}).then(function(d){if(d.error)showMsg('applyMsg','error',d.error);else showMsg('applyMsg','ok','部署成功: '+escHtml(d.detail));}).catch(function(e){showMsg('applyMsg','error','请求失败: '+e.message);});}
     function showMsg(id,type,msg){var el=document.getElementById(id);el.textContent=msg;el.className='status-msg '+type;setTimeout(function(){el.className='status-msg';},8000);}
-    function loadClusterInfo(){fetchK8sAPI('api/nodes').then(function(d){var items=d.items||[];var html='<strong>节点数:</strong> '+items.length+'<br>';items.forEach(function(n){var v='-';if(n.status&&n.status.nodeInfo)v=n.status.nodeInfo.kubeletVersion;html+='&nbsp;&nbsp;🖥️ '+escHtml(n.metadata.name)+' ('+escHtml(v)+')<br>';});document.getElementById('clusterInfo').innerHTML=html;}).catch(function(e){document.getElementById('clusterInfo').innerHTML='<span style="color:#dc3545">连接失败: '+escHtml(e.message)+'</span>';});}
+    function loadClusterInfo(){fetch('/cgi-bin/luci/admin/services/kubernetes/k8s_nodes').then(function(r){return r.json();}).then(function(d){var items=d.items||[];var html='<strong>节点数:</strong> '+items.length+'<br>';items.forEach(function(n){var v='-';if(n.status&&n.status.nodeInfo)v=n.status.nodeInfo.kubeletVersion;html+='&nbsp;&nbsp;🖥️ '+escHtml(n.metadata.name)+' ('+escHtml(v)+')<br>';});document.getElementById('clusterInfo').innerHTML=html;}).catch(function(e){document.getElementById('clusterInfo').innerHTML='<span style="color:#dc3545">连接失败: '+escHtml(e.message)+'</span>';});}
     // Load saved settings
     var saved=localStorage.getItem('k8s_settings');
     if(saved){try{var s=JSON.parse(saved);document.getElementById('kubeconfig').value=s.kubeconfig||'/etc/kubernetes/admin.conf';document.getElementById('defaultNs').value=s.defaultNs||'default';document.getElementById('refreshInterval').value=s.refreshInterval||'15';}catch(e){}}

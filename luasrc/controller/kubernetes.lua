@@ -61,8 +61,6 @@ function index()
     entry({"admin", "services", "kubernetes", "k8s_exec"}, call("action_exec")).leaf = true
     entry({"admin", "services", "kubernetes", "k8s_containers"}, call("action_containers")).leaf = true
     entry({"admin", "services", "kubernetes", "k8s_top_nodes"}, call("action_top_nodes")).leaf = true
-    entry({"admin", "services", "kubernetes", "k8s_settings"}, call("action_settings")).leaf = true
-    entry({"admin", "services", "kubernetes", "k8s_settings_save"}, call("action_settings_save")).leaf = true
 end
 
 local function exec_cmd(cmd)
@@ -72,76 +70,10 @@ local function exec_cmd(cmd)
     return output
 end
 
-local CONFIG_FILE = "/etc/kubernetes/k8s-ui-config.json"
-
-local function read_config()
-    local f = io.open(CONFIG_FILE, "r")
-    if not f then
-        local default = {kubeconfig="/etc/kubernetes/admin.conf", history={"/etc/kubernetes/admin.conf"}}
-        return default
-    end
-    local content = f:read("*a")
-    f:close()
-    if content == "" then
-        local default = {kubeconfig="/etc/kubernetes/admin.conf", history={"/etc/kubernetes/admin.conf"}}
-        return default
-    end
-    local ok, cfg = pcall(function() return loadstring("return " .. content)() end)
-    if not ok or not cfg then
-        return {kubeconfig="/etc/kubernetes/admin.conf", history={"/etc/kubernetes/admin.conf"}}
-    end
-    return cfg
-end
-
-local function write_config(cfg)
-    local f = io.open(CONFIG_FILE, "w")
-    if not f then return false end
-    -- Check if table is array-like (sequential integer keys starting from 1)
-    local function is_array(t)
-        local n = 0
-        for k, v in pairs(t) do n = n + 1 end
-        for i = 1, n do if t[i] == nil then return false end end
-        return true
-    end
-    local function serialize(val)
-        if type(val) == "table" then
-            if is_array(val) then
-                local parts = {}
-                for _, v in ipairs(val) do table.insert(parts, serialize(v)) end
-                return "{ " .. table.concat(parts, ", ") .. " }"
-            else
-                local parts = {}
-                for k, v in pairs(val) do
-                    -- Check if key is a valid Lua identifier
-                    if type(k) == "string" and k:match("^[a-zA-Z_][a-zA-Z0-9_]*$") then
-                        table.insert(parts, k .. " = " .. serialize(v))
-                    else
-                        table.insert(parts, "[" .. serialize(k) .. "] = " .. serialize(v))
-                    end
-                end
-                return "{ " .. table.concat(parts, ", ") .. " }"
-            end
-        elseif type(val) == "string" then
-            return string.format("%q", val)
-        elseif type(val) == "nil" then
-            return "nil"
-        else
-            return tostring(val)
-        end
-    end
-    f:write("return " .. serialize(cfg, 0))
-    f:close()
-    return true
-end
-
-local function get_kubeconfig()
-    local cfg = read_config()
-    return cfg.kubeconfig or "/etc/kubernetes/admin.conf"
-end
+local KUBECONFIG = "/root/.kube/config"
 
 local function run_kubectl(args, ns, as_json)
-    local kubeconfig = get_kubeconfig()
-    local cmd = "KUBECONFIG=" .. kubeconfig .. " kubectl"
+    local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl"
     if ns and ns ~= "" and ns ~= "all" then
         cmd = cmd .. " -n " .. ns
     end
@@ -300,8 +232,7 @@ function action_apply()
     local f = io.open(tmpfile, "w")
     if not f then http.write_json({error = "cannot create temp file"}); return end
     f:write(yaml_content); f:close()
-    local kubeconfig = get_kubeconfig()
-    local cmd = "KUBECONFIG=" .. kubeconfig .. " kubectl apply -f " .. tmpfile .. " 2>&1"
+    local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl apply -f " .. tmpfile .. " 2>&1"
     local output = exec_cmd(cmd); os.remove(tmpfile)
     http.prepare_content("application/json"); http.write_json({message = "applied", detail = output})
 end
@@ -327,8 +258,7 @@ function action_exec()
     if ns ~= "" and ns ~= "all" then args[#args+1] = "-n"; args[#args+1] = ns end
     if container ~= "" then args[#args+1] = "-c"; args[#args+1] = container end
     args[#args+1] = pod; args[#args+1] = "--"; args[#args+1] = command
-    local kubeconfig = get_kubeconfig()
-    local cmd = "KUBECONFIG=" .. kubeconfig .. " kubectl"
+    local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl"
     for _, arg in ipairs(args) do cmd = cmd .. " " .. arg end
     cmd = cmd .. " 2>&1"
     local output = exec_cmd(cmd)
@@ -346,7 +276,7 @@ end
 
 -- Top nodes
 function action_top_nodes()
-    local output = exec_cmd("KUBECONFIG=" .. get_kubeconfig() .. " kubectl top nodes --no-headers 2>/dev/null")
+    local output = exec_cmd("KUBECONFIG=" .. KUBECONFIG .. " kubectl top nodes --no-headers 2>/dev/null")
     local nodes = {}
     for line in output:gmatch('[^\n]+') do
         line = line:gsub('^%s+', ''):gsub('%s+$', '')
@@ -370,28 +300,3 @@ function action_top_nodes()
     http.write_json({nodes = nodes})
 end
 
--- Settings: get current config and history
-function action_settings()
-    local cfg = read_config()
-    http.prepare_content("application/json")
-    http.write_json({kubeconfig = cfg.kubeconfig or "/etc/kubernetes/admin.conf", history = cfg.history or {"/etc/kubernetes/admin.conf"}})
-end
-
--- Settings: save kubeconfig path
-function action_settings_save()
-    local new_kc = http.formvalue("kubeconfig") or ""
-    if new_kc == "" then http.write_json({error = "kubeconfig path required"}); return end
-    local cfg = read_config()
-    local hist = cfg.history or {}
-    local new_hist = {}
-    table.insert(new_hist, new_kc)
-    for _, h in ipairs(hist) do
-        if h ~= new_kc then table.insert(new_hist, h) end
-    end
-    while #new_hist > 20 do table.remove(new_hist) end
-    cfg.kubeconfig = new_kc
-    cfg.history = new_hist
-    write_config(cfg)
-    http.prepare_content("application/json")
-    http.write_json({ok = true, kubeconfig = new_kc, history = new_hist})
-end

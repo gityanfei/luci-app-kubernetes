@@ -30,11 +30,11 @@
 .k8s-btn-primary:hover{background:#40a9ff}
 .k8s-btn-danger{border-color:#ff4d4f;color:#ff4d4f}
 .k8s-btn-danger:hover{background:#ff4d4f;color:#fff}
-.k8s-panel{background:#fff;border:1px solid #e8e8e8;border-top:0;border-radius:0 0 8px 8px;padding:20px;min-height:400px}
-.k8s-table-wrap{border:1px solid #f0f0f0;border-radius:8px;overflow:hidden}
-.k8s-table{width:100%;border-collapse:collapse}
+.k8s-panel{background:#fff;border:1px solid #e8e8e8;border-top:0;border-radius:0 0 8px 8px;padding:20px;min-height:400px;overflow-x:auto}
+.k8s-table-wrap{border:1px solid #f0f0f0;border-radius:8px;overflow-x:auto;overflow-y:hidden}
+.k8s-table{min-width:100%;border-collapse:collapse;table-layout:auto}
 .k8s-table th{text-align:left;padding:10px 14px;color:#666;font-size:12px;border-bottom:1px solid #f0f0f0;background:#fafafa;white-space:nowrap}
-.k8s-table td{padding:8px 14px;border-bottom:1px solid #f5f5f5;font-size:13px}
+.k8s-table td{padding:8px 14px;border-bottom:1px solid #f5f5f5;font-size:13px;white-space:nowrap}
 .k8s-table tr:hover{background:#f8fbff}
 .k8s-table .mono{font-family:monospace;font-size:12px}
 .mono{font-family:monospace;font-size:12px}
@@ -46,6 +46,7 @@
 .k8s-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;align-items:center;justify-content:center}
 .k8s-overlay.active{display:flex}
 .k8s-box{background:#fff;border-radius:12px;width:92%;max-width:960px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.k8s-modal-inline{background:#fff;border-radius:8px;width:360px;box-shadow:0 4px 24px rgba(0,0,0,.25);border:1px solid #e8e8e8;position:fixed;z-index:10001}
 .k8s-box-header{padding:14px 24px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center}
 .k8s-box-header h3{margin:0;color:#333;font-size:16px}
 .k8s-box-actions{display:flex;gap:4px;flex-shrink:0}
@@ -79,6 +80,15 @@
 .k8s-ov-card .label{font-size:12px;color:#666;margin-top:2px}
 .k8s-node-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
 .k8s-node-card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #f0f0f0}
+/* YAML Editor Styles */
+.k8s-yaml-editor-body{display:flex;overflow:auto;background:#fafafa;position:relative;max-height:70vh}
+.k8s-yaml-gutter{width:48px;padding:16px 0;flex-shrink:0;background:#f0f0f0;border-right:1px solid #e0e0e0;user-select:none;text-align:right;overflow:hidden}
+.k8s-yaml-gutter div{height:21px;line-height:21px;font-size:12px;color:#999;font-family:monospace;padding-right:8px}
+.k8s-yaml-editor{flex:1;padding:16px 16px 16px 12px;font-family:'Consolas','Monaco','Courier New',monospace;font-size:13px;color:#333;background:transparent;border:none;outline:none;resize:none;line-height:21px;min-height:400px;tab-size:2;white-space:pre;overflow-x:auto}
+.k8s-yaml-editor::-webkit-scrollbar{width:8px}
+.k8s-yaml-editor::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px}
+.k8s-yaml-editor::-webkit-scrollbar-thumb:hover{background:#aaa}
+.k8s-yaml-footer{padding:10px 24px;border-top:1px solid #f0f0f0;display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-shrink:0}
 </style>
 
 <div class="cbi-section" style="border:0;box-shadow:none;background:transparent;margin:0">
@@ -141,9 +151,7 @@
                 <span class="k8s-badge" id="k8sCountBadge"></span>
             </div>
             <div class="k8s-toolbar-right">
-                <select class="k8s-kc-select" id="k8sKcSelect" onchange="k8sOnKcChange()" title="切换 Kubeconfig">
-                    <option value="">加载中...</option>
-                </select>
+    
                 <select class="k8s-ns-select" id="k8sNsSelect" onchange="k8sOnNSChange()">
                     <option value="all">全部命名空间</option>
                 </select>
@@ -156,9 +164,15 @@
 </div>
 
 <div class="k8s-overlay" id="k8sYamlModal">
-    <div class="k8s-box" style="max-width:720px">
-        <div class="k8s-box-header"><h3 id="k8sYamlTitle">YAML</h3><div class="k8s-box-actions"><button class="k8s-btn" id="k8sYamlEditBtn" onclick="k8sYamlEdit()" style="white-space:nowrap">✏️ 编辑</button><button class="k8s-btn k8s-btn-primary" id="k8sYamlApplyBtn" onclick="k8sYamlApply()" style="display:none;white-space:nowrap">✅ 应用</button><button class="k8s-box-close" onclick="k8sCloseModal('k8sYamlModal')">&times;</button></div></div>
-        <div class="k8s-box-body" style="max-height:70vh"><div class="k8s-yaml" id="k8sYamlContent"></div><textarea class="k8s-yaml-edit" id="k8sYamlEditor" style="display:none"></textarea></div>
+    <div class="k8s-box" style="max-width:860px">
+        <div class="k8s-box-header"><h3 id="k8sYamlTitle">YAML</h3><div class="k8s-box-actions"><button class="k8s-btn" id="k8sYamlCollapseBtn" onclick="k8sYamlCollapseAll()" title="折叠/展开" style="white-space:nowrap">📂 折叠</button><button class="k8s-box-close" onclick="k8sCloseModal('k8sYamlModal')">&times;</button></div></div>
+        <div class="k8s-box-body k8s-yaml-editor-body">
+            <div class="k8s-yaml-gutter" id="k8sYamlGutter"></div>
+            <textarea class="k8s-yaml-editor" id="k8sYamlEditor" spellcheck="false"></textarea>
+        </div>
+        <div class="k8s-yaml-footer">
+            <button class="k8s-btn k8s-btn-primary" id="k8sYamlApplyBtn" onclick="k8sYamlApply()" style="white-space:nowrap">✅ 应用</button>
+        </div>
     </div>
 </div>
 <div class="k8s-overlay" id="k8sLogModal">
@@ -175,6 +189,22 @@
             <div class="k8s-exec-out" id="k8sExecOutput"></div>
             <div class="k8s-exec-input"><input id="k8sExecInput" placeholder="输入命令后按回车执行..." onkeydown="k8sHandleExecKey(event)"><button onclick="k8sExecCmd()">执行</button></div>
         </div>
+    </div>
+</div>
+
+<!-- Scale inline modal -->
+<div id="k8sScaleModal" class="k8s-modal-inline" style="display:none">
+    <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:600;color:#333" id="k8sScaleTitle">配置预期数</span>
+        <span style="cursor:pointer;font-size:18px;color:#999" onclick="k8sCloseScale()">&times;</span>
+    </div>
+    <div style="padding:20px">
+        <div style="margin-bottom:12px"><span style="font-size:13px;color:#666">预期数:</span></div>
+        <input type="number" id="k8sScaleInput" min="0" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;justify-content:flex-end;gap:8px">
+        <button class="k8s-btn" onclick="k8sCloseScale()">取消</button>
+        <button class="k8s-btn k8s-btn-primary" id="k8sScaleConfirmBtn" onclick="k8sConfirmScale()">确定</button>
     </div>
 </div>
 
@@ -307,9 +337,7 @@ window.k8sOnNSChange=function(){ns=document.getElementById('k8sNsSelect').value;
 
 function loadNS(){fetch(K8S+'/k8s_namespaces').then(function(r){return r.json();}).then(function(d){var s=document.getElementById('k8sNsSelect');if(!s)return;s.innerHTML='<option value="all">全部命名空间</option>';if(d.items)d.items.forEach(function(x){var o=document.createElement('option');o.value=x.metadata.name;o.textContent=x.metadata.name;if(o.value===ns)o.selected=true;s.appendChild(o);});}).catch(function(){});}
 
-var currentKc='';
-function loadKc(){fetch(K8S+'/k8s_settings').then(function(r){return r.json();}).then(function(d){var s=document.getElementById('k8sKcSelect');if(!s)return;currentKc=d.kubeconfig||'';s.innerHTML='';(d.history||[]).forEach(function(h){var o=document.createElement('option');o.value=h;o.textContent=h;if(h===currentKc)o.selected=true;s.appendChild(o);});var custom=document.createElement('option');custom.value='__custom__';custom.textContent='📝 自定义...';s.appendChild(custom);}).catch(function(){var s=document.getElementById('k8sKcSelect');if(s)s.innerHTML='<option value="">加载失败</option>';});}
-window.k8sOnKcChange=function(){var s=document.getElementById('k8sKcSelect');if(!s)return;var v=s.value;if(v==='__custom__'){var p=prompt('输入 kubeconfig 路径:','/etc/kubernetes/admin.conf');if(!p||!p.trim()){s.value=currentKc;return;}v=p.trim();}if(v===currentKc)return;fetch(K8S+'/k8s_settings_save',{method:'POST',body:'kubeconfig='+encodeURIComponent(v),headers:{'Content-Type':'application/x-www-form-urlencoded'}}).then(function(r){return r.json();}).then(function(d){if(d.error){alert('保存失败: '+d.error);s.value=currentKc;}else{currentKc=d.kubeconfig;loadKc();k8sLoadData();}}).catch(function(e){alert('请求失败: '+e.message);s.value=currentKc;});};
+
 
 function navigate(p){
     page=p;
@@ -461,16 +489,15 @@ function renderNodesTableInner(el,items,topMap,podStats){
 
 window.showNodeYAML=function(name){
     document.getElementById('k8sYamlTitle').textContent='节点详情 - '+name;
-    document.getElementById('k8sYamlContent').textContent='加载中...';
-    document.getElementById('k8sYamlContent').style.display='';
-    document.getElementById('k8sYamlEditor').style.display='none';
-    document.getElementById('k8sYamlEditBtn').style.display='';
-    document.getElementById('k8sYamlApplyBtn').style.display='none';
+    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
     openM('k8sYamlModal');
     fetch(K8S+'/k8s_describe?kind=node&name='+encodeURIComponent(name)).then(function(r){return r.text();}).then(function(t){
-        document.getElementById('k8sYamlContent').textContent=t||'(无数据)';
-        document.getElementById('k8sYamlEditor').value=t||'';
-    }).catch(function(e){document.getElementById('k8sYamlContent').textContent='加载失败: '+e.message;});
+        var ta=document.getElementById('k8sYamlEditor');
+        ta.value=t||'(无数据)';
+        ta.setAttribute('data-full',ta.value);
+        ta.setAttribute('data-folded','0');
+        k8sUpdateLineNumbers();
+    }).catch(function(e){var ta=document.getElementById('k8sYamlEditor');ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
 };
 
 
@@ -497,8 +524,15 @@ function buildTable(container,c,items){
                 if(a==='edit'){btnLabel='编辑';}
                 if(a==='label'){btnLabel='标签';}
                 if(a==='quota'){btnLabel='配额';}
+                if(a==='scale'){btnLabel='副本';}
                 h+='<button class="'+btnClass+'" data-act="'+a+'" data-ns="'+esc(item.metadata.namespace||'')+'" data-kind="'+c.kind+'" data-name="'+esc(item.metadata.name)+'" onclick="k8sHandle(this)">'+btnLabel+'</button>';
             });
+            // Always add scale button for deployment and statefulset
+            if(c.kind==='deployment'||c.kind==='statefulset'){
+                var cur=item.status||{};
+                var rep=cur.replicas||0;
+                h+='<button class="k8s-act-btn" onclick="doScale(\''+esc(item.metadata.namespace||'')+'\',\''+c.kind+'\',\''+esc(item.metadata.name)+'\',\''+rep+'\')" title="配置副本">副本('+rep+')</button>';
+            }
             h+='</div></td>';
         }
         h+='</tr>';
@@ -509,22 +543,26 @@ function buildTable(container,c,items){
 
 window.k8sHandle=function(btn){
     var act=btn.dataset.act,ns2=btn.dataset.ns,kind=btn.dataset.kind,name=btn.dataset.name;
-    switch(act){case 'yaml':showYAML(ns2,kind,name);break;case 'logs':showLogs(ns2,name);break;case 'exec':showExec(ns2,name);break;case 'describe':showDescribe(ns2,kind,name);break;case 'delete':doDelete(ns2,kind,name);break;case 'restart':doRestart(ns2,kind,name);break;case 'edit':doEdit(ns2,kind,name);break;case 'label':doLabel(ns2,kind,name);break;case 'quota':doQuota(ns2,name);break;}
+    switch(act){case 'yaml':showYAML(ns2,kind,name);break;case 'logs':showLogs(ns2,name);break;case 'exec':showExec(ns2,name);break;case 'describe':showDescribe(ns2,kind,name);break;case 'delete':doDelete(ns2,kind,name);break;case 'restart':doRestart(ns2,kind,name);break;case 'edit':doEdit(ns2,kind,name);break;case 'label':doLabel(ns2,kind,name);break;case 'quota':doQuota(ns2,name);break;case 'scale':doScale(ns2,kind,name);break;}
 };
 
 function doEdit(ns2,kind,name){
     document.getElementById('k8sYamlTitle').textContent='编辑 '+kind+' - '+name;
-    document.getElementById('k8sYamlContent').textContent='加载中...';
-    document.getElementById('k8sYamlContent').style.display='';
-    document.getElementById('k8sYamlEditor').style.display='none';
-    document.getElementById('k8sYamlEditBtn').style.display='';
-    document.getElementById('k8sYamlApplyBtn').style.display='none';
+    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
     openM('k8sYamlModal');
+    var ta=document.getElementById('k8sYamlEditor');
+    ta.value='加载中...';
+    ta.setAttribute('data-full','');
+    ta.setAttribute('data-folded','0');
+    k8sUpdateLineNumbers();
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     fetch(K8S+'/k8s_yaml?'+p).then(function(r){return r.text();}).then(function(t){
-        document.getElementById('k8sYamlContent').textContent=t||'(无数据)';
-        document.getElementById('k8sYamlEditor').value=t||'';
-    }).catch(function(e){document.getElementById('k8sYamlContent').textContent='加载失败: '+e.message;});
+        ta.value=t||'(无数据)';
+        ta.setAttribute('data-full',ta.value);
+        ta.setAttribute('data-folded','0');
+        k8sUpdateLineNumbers();
+        setTimeout(function(){ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;},100);
+    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
 }
 
 function doLabel(ns2,kind,name){
@@ -561,30 +599,89 @@ function showYAML(ns2,kind,name){
     yamlKind=kind;yamlName=name;yamlNS=ns2||'';
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     document.getElementById('k8sYamlTitle').textContent=kind+' - '+name+' YAML';
-    document.getElementById('k8sYamlContent').textContent='加载中...';
-    document.getElementById('k8sYamlContent').style.display='';
-    document.getElementById('k8sYamlEditor').style.display='none';
-    document.getElementById('k8sYamlEditBtn').style.display='';
-    document.getElementById('k8sYamlApplyBtn').style.display='none';
+    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
     openM('k8sYamlModal');
+    var ta=document.getElementById('k8sYamlEditor');
+    ta.value='加载中...';
+    ta.setAttribute('data-full','');
+    ta.setAttribute('data-folded','0');
+    k8sUpdateLineNumbers();
     fetch(K8S+'/k8s_yaml?'+p).then(function(r){return r.text();}).then(function(t){
-        document.getElementById('k8sYamlContent').textContent=t||'(无数据)';
-        document.getElementById('k8sYamlEditor').value=t||'';
-    }).catch(function(e){document.getElementById('k8sYamlContent').textContent='加载失败: '+e.message;});
+        ta.value=t||'(无数据)';
+        ta.setAttribute('data-full',ta.value);
+        ta.setAttribute('data-folded','0');
+        k8sUpdateLineNumbers();
+        setTimeout(function(){ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;},100);
+    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
 }
 
-window.k8sYamlEdit=function(){
-    document.getElementById('k8sYamlContent').style.display='none';
-    document.getElementById('k8sYamlEditor').style.display='';
-    document.getElementById('k8sYamlEditBtn').style.display='none';
-    document.getElementById('k8sYamlApplyBtn').style.display='';
-    document.getElementById('k8sYamlEditor').focus();
+function k8sUpdateLineNumbers(){
+    var ta=document.getElementById('k8sYamlEditor');
+    var gutter=document.getElementById('k8sYamlGutter');
+    if(!ta||!gutter)return;
+    var lines=ta.value.split('\n');
+    var html='';
+    for(var i=1;i<=lines.length;i++){
+        html+='<div>'+i+'</div>';
+    }
+    gutter.innerHTML=html;
+}
+
+function k8sSyncScroll(){
+    var ta=document.getElementById('k8sYamlEditor');
+    var gutter=document.getElementById('k8sYamlGutter');
+    if(ta&&gutter)gutter.scrollTop=ta.scrollTop;
+}
+
+function yamlToggleCollapse(textarea, btn){
+    var lines=textarea.value.split('\n');
+    var folded=textarea.getAttribute('data-folded')==='1';
+    if(folded){
+        textarea.value=textarea.getAttribute('data-full');
+        textarea.setAttribute('data-folded','0');
+        btn.textContent='📂 折叠';
+    } else {
+        var full=textarea.value;
+        textarea.setAttribute('data-full',full);
+        textarea.value=k8sFoldYaml(full);
+        textarea.setAttribute('data-folded','1');
+        btn.textContent='📄 展开';
+    }
+    k8sUpdateLineNumbers();
+}
+window.k8sYamlCollapseAll=function(){
+    var ta=document.getElementById('k8sYamlEditor');
+    var btn=document.getElementById('k8sYamlCollapseBtn');
+    yamlToggleCollapse(ta,btn);
 };
+function k8sFoldYaml(text){
+    var lines=text.split('\n'),result=[],fold=false,indent=0,prevIndent=0;
+    var foldKeys=['managedFields','creationTimestamp','resourceVersion','uid','selfLink','generation','finalizers','ownerReferences','annotations'];
+    for(var i=0;i<lines.length;i++){
+        var line=lines[i];
+        var m=line.match(/^(\s*)([\w.-]+):\s*(.*)$/);
+        if(m){
+            indent=m[1].length;
+            var key=m[2];
+            var val=m[3];
+            if(foldKeys.indexOf(key)!==-1 && (val===''||val==='[]'||val==='{')){
+                fold=true;prevIndent=indent;
+                if(indent===0){result.push(line+'  # ... ('+key+' 已折叠)');}
+                else{result.push(line.replace(/:.*$/,': ...'));} 
+                continue;
+            }
+            if(fold && indent>prevIndent){continue;}
+            fold=false;
+            result.push(line);
+        } else if(line.match(/^\s*- /)&&fold){continue;}
+        else{result.push(line);fold=false;}
+    }
+    return result.join('\n');
+}
 
 window.k8sYamlApply=function(){
-    var yaml=document.getElementById('k8sYamlEditor').value;
+    var yaml=document.getElementById('k8sYamlEditor').getAttribute('data-folded')==='1'?document.getElementById('k8sYamlEditor').getAttribute('data-full'):document.getElementById('k8sYamlEditor').value;
     if(!yaml.trim()){alert('YAML 为空');return;}
-    if(!confirm('确定应用此 YAML 配置到集群？'))return;
     document.getElementById('k8sYamlApplyBtn').textContent='⏳ 应用中...';
     document.getElementById('k8sYamlApplyBtn').disabled=true;
     var p=new FormData();p.append('yaml',yaml);
@@ -638,13 +735,51 @@ window.k8sExecCmd=function(){
 function showDescribe(ns2,kind,name){
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     document.getElementById('k8sYamlTitle').textContent=kind+' 详情 - '+name;
-    document.getElementById('k8sYamlContent').textContent='加载中...';
+    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
     openM('k8sYamlModal');
-    fetch(K8S+'/k8s_describe?'+p).then(function(r){return r.text();}).then(function(t){document.getElementById('k8sYamlContent').textContent=t||'(无数据)';}).catch(function(e){document.getElementById('k8sYamlContent').textContent='加载失败: '+e.message;});
+    var ta=document.getElementById('k8sYamlEditor');
+    ta.value='加载中...';
+    ta.setAttribute('data-full','');
+    ta.setAttribute('data-folded','0');
+    k8sUpdateLineNumbers();
+    fetch(K8S+'/k8s_describe?'+p).then(function(r){return r.text();}).then(function(t){
+        ta.value=t||'(无数据)';
+        ta.setAttribute('data-full',ta.value);
+        ta.setAttribute('data-folded','0');
+        k8sUpdateLineNumbers();
+    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
 }
 
-function doDelete(ns2,kind,name){if(!confirm('确定删除 '+kind+' "'+name+'"？'))return;var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);fetch(K8S+'/k8s_delete?'+p,{method:'DELETE'}).then(function(r){return r.json();}).then(function(){k8sLoadData();}).catch(function(e){alert('删除失败: '+e.message);});}
-function doRestart(ns2,kind,name){if(!confirm('确定重启 '+kind+' "'+name+'"？'))return;var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);fetch(K8S+'/k8s_restart?'+p,{method:'POST'}).then(function(r){return r.json();}).then(function(){setTimeout(k8sLoadData,2000);}).catch(function(e){alert('重启失败: '+e.message);});}
+function doDelete(ns2,kind,name){var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);fetch(K8S+'/k8s_delete?'+p,{method:'DELETE'}).then(function(r){return r.json();}).then(function(){k8sLoadData();}).catch(function(e){alert('删除失败: '+e.message);});}
+function doRestart(ns2,kind,name){var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);fetch(K8S+'/k8s_restart?'+p,{method:'POST'}).then(function(r){return r.json();}).then(function(){setTimeout(k8sLoadData,2000);}).catch(function(e){alert('重启失败: '+e.message);});}
+
+// Scale modal
+var scaleNS='',scaleKind='',scaleName='',scaleReplicas=0;
+window.doScale=function(ns2,kind,name,replicas){
+    scaleNS=ns2;scaleKind=kind;scaleName=name;scaleReplicas=replicas||0;
+    document.getElementById('k8sScaleTitle').textContent=kind+' - '+name;
+    document.getElementById('k8sScaleInput').value=scaleReplicas;
+    document.getElementById('k8sScaleConfirmBtn').textContent='确定';
+    document.getElementById('k8sScaleConfirmBtn').disabled=false;
+    var modal=document.getElementById('k8sScaleModal');
+    modal.style.display='';
+    var rect=document.body.getBoundingClientRect();
+    modal.style.left=Math.max(20,rect.width/2-180)+'px';
+    modal.style.top=Math.max(20,100)+'px';
+    setTimeout(function(){document.getElementById('k8sScaleInput').focus();},100);
+};
+window.k8sCloseScale=function(){document.getElementById('k8sScaleModal').style.display='none';};
+window.k8sConfirmScale=function(){
+    var val=document.getElementById('k8sScaleInput').value;
+    if(val===''||parseInt(val)<0){alert('请输入有效的数字');return;}
+    document.getElementById('k8sScaleConfirmBtn').textContent='⏳ 提交中...';
+    document.getElementById('k8sScaleConfirmBtn').disabled=true;
+    var p='kind='+encodeURIComponent(scaleKind)+'&name='+encodeURIComponent(scaleName)+'&replicas='+encodeURIComponent(val);
+    if(scaleNS)p+='&namespace='+encodeURIComponent(scaleNS);
+    fetch(K8S+'/k8s_scale?'+p,{method:'POST'}).then(function(r){return r.json();}).then(function(){
+        k8sCloseScale();k8sLoadData();
+    }).catch(function(e){alert('修改失败: '+e.message);document.getElementById('k8sScaleConfirmBtn').textContent='确定';document.getElementById('k8sScaleConfirmBtn').disabled=false;});
+};
 
 function openM(id){document.getElementById(id).classList.add('active');}
 window.k8sCloseModal=function(id){document.getElementById(id).classList.remove('active');}
@@ -727,8 +862,7 @@ window.showNodeDescribe=function(name){
 };
 
 window.doDeleteNode=function(name){
-    if(!confirm('确定删除节点 '+name+'？此操作将不可逆！'))return;
-    fetch(K8S+'/k8s_delete?kind=node&name='+encodeURIComponent(name),{method:'DELETE'}).then(function(r){return r.json();}).then(function(){alert('已删除');k8sLoadData();}).catch(function(e){alert('删除失败: '+e.message);});
+    fetch(K8S+'/k8s_delete?kind=node&name='+encodeURIComponent(name),{method:'DELETE'}).then(function(r){return r.json();}).then(function(){k8sLoadData();}).catch(function(e){alert('删除失败: '+e.message);});
 };
 
 // Init
@@ -736,11 +870,24 @@ document.querySelectorAll('.k8s-item').forEach(function(el){el.addEventListener(
 document.getElementById('k8sYamlModal').addEventListener('click',function(e){if(e.target===this)k8sCloseModal('k8sYamlModal');});
 document.getElementById('k8sLogModal').addEventListener('click',function(e){if(e.target===this)k8sCloseModal('k8sLogModal');});
 document.getElementById('k8sExecModal').addEventListener('click',function(e){if(e.target===this)k8sCloseModal('k8sExecModal');});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){k8sCloseModal('k8sYamlModal');k8sCloseModal('k8sLogModal');k8sCloseModal('k8sExecModal');}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){k8sCloseModal('k8sYamlModal');k8sCloseModal('k8sLogModal');k8sCloseModal('k8sExecModal');k8sCloseScale();}});
+
+// YAML editor: sync scroll + tab support
+document.getElementById('k8sYamlEditor').addEventListener('scroll',k8sSyncScroll);
+document.getElementById('k8sYamlEditor').addEventListener('input',k8sUpdateLineNumbers);
+document.getElementById('k8sYamlEditor').addEventListener('keydown',function(e){
+    if(e.key==='Tab'){
+        e.preventDefault();
+        var ta=this,start=ta.selectionStart,end=ta.selectionEnd;
+        ta.value=ta.value.substring(0,start)+'  '+ta.value.substring(end);
+        ta.selectionStart=ta.selectionEnd=start+2;
+        k8sUpdateLineNumbers();
+    }
+});
 
 fetch(K8S+'/k8s_nodes').then(function(r){return r.json();}).then(function(d){var l=document.getElementById('k8sClusterLabel');if(d.items&&d.items.length>0)l.textContent=d.items.length+' 节点';}).catch(function(){});
 
-loadNS();loadKc();k8sLoadData();
+loadNS();k8sLoadData();
 })();//]]></script>
 
 <%+footer%>
