@@ -8,11 +8,13 @@
 .k8s-tree-nav{padding:8px 0;max-height:calc(100vh - 160px);overflow-y:auto;background:#fff}
 .k8s-group-title{padding:8px 16px 4px;font-size:12px;color:#999;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none}
 .k8s-group-title:hover{color:#333}
+.k8s-group-title.flat-item{color:#666;font-size:13px;padding:8px 16px 8px 36px;font-weight:400}
+.k8s-group-title.flat-item:hover{color:#1890ff;cursor:pointer}
 .k8s-group-title .arrow{display:inline-block;transition:transform .2s;font-size:10px;width:12px}
 .k8s-group-title.open .arrow{transform:rotate(90deg)}
 .k8s-group-items{display:none;padding:0 0 4px}
 .k8s-group-items.open{display:block}
-.k8s-item{padding:8px 16px 8px 36px;font-size:13px;color:#666;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+.k8s-item{padding:8px 16px 8px 36px;font-size:13px;color:#666;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}.k8s-item.k8s-standalone{padding-left:16px}
 .k8s-item:hover{background:#e6f7ff;color:#1890ff}
 .k8s-item.active{background:#1890ff;color:#fff}
 .k8s-item .icon{font-size:14px;width:16px;text-align:center}
@@ -82,8 +84,8 @@
 .k8s-node-card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #f0f0f0}
 /* YAML Editor Styles */
 .k8s-yaml-editor-body{display:flex;overflow:auto;background:#fafafa;position:relative;max-height:70vh}
-.k8s-yaml-gutter{width:48px;padding:16px 0;flex-shrink:0;background:#f0f0f0;border-right:1px solid #e0e0e0;user-select:none;text-align:right;overflow:hidden}
-.k8s-yaml-gutter div{height:21px;line-height:21px;font-size:12px;color:#999;font-family:monospace;padding-right:8px}
+.k8s-yaml-gutter{width:56px;padding:16px 0;flex-shrink:0;background:#f0f0f0;border-right:1px solid #e0e0e0;user-select:none;text-align:right;overflow:hidden}
+.k8s-yaml-gutter div{height:21px;line-height:21px;font-size:12px;color:#999;font-family:monospace;padding-right:4px;text-align:center}.k8s-gutter-fold{display:inline-block;width:14px;height:14px;font-size:9px;line-height:1;color:#bbb;cursor:pointer;border:1px solid #ddd;border-radius:3px;transition:all .15s;vertical-align:middle;margin-left:2px}.k8s-gutter-fold:hover{color:#1890ff;border-color:#1890ff;background:#e6f7ff}.k8s-gutter-fold.collapsed .arr{transform:rotate(-90deg)}.k8s-gutter-fold .arr{display:inline-block;transition:transform .2s}
 .k8s-yaml-editor{flex:1;padding:16px 16px 16px 12px;font-family:'Consolas','Monaco','Courier New',monospace;font-size:13px;color:#333;background:transparent;border:none;outline:none;resize:none;line-height:21px;min-height:400px;tab-size:2;white-space:pre;overflow-x:auto}
 .k8s-yaml-editor::-webkit-scrollbar{width:8px}
 .k8s-yaml-editor::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px}
@@ -95,7 +97,7 @@
 <div class="k8s-container">
     <div class="k8s-tree">
         <div class="k8s-tree-header">
-            <span>☸️ Kubernetes</span>
+            <span> Kubernetes</span>
             <span class="cluster" id="k8sClusterLabel">集群</span>
         </div>
         <nav class="k8s-tree-nav">
@@ -103,51 +105,46 @@
                 <div class="k8s-group-title open" onclick="k8sToggle(this)"><span class="arrow">▶</span> 集群</div>
                 <div class="k8s-group-items open">
                     <div class="k8s-item active" data-page="overview"><span class="icon"></span> 总览</div>
-                    <div class="k8s-item" data-page="nodes"><span class="icon">🖥️</span> 节点</div>
-                    <div class="k8s-item" data-page="namespaces"><span class="icon">📂</span> 命名空间</div>
+                    <div class="k8s-item" data-page="nodes"><span class="icon"></span> 节点</div>
+                    <div class="k8s-item" data-page="namespaces"><span class="icon"></span> 命名空间</div>
                 </div>
             </div>
             <div>
                 <div class="k8s-group-title open" onclick="k8sToggle(this)"><span class="arrow">▶</span> 工作负载</div>
                 <div class="k8s-group-items open">
-                    <div class="k8s-item" data-page="pods"><span class="icon">📦</span> Pods</div>
-                    <div class="k8s-item" data-page="jobs"><span class="icon">⚡</span> 任务</div>
-                    <div class="k8s-item" data-page="deployments"><span class="icon">🚀</span> 部署</div>
-                    <div class="k8s-item" data-page="statefulsets"><span class="icon">🔄</span> 有状态集</div>
-                    <div class="k8s-item" data-page="daemonsets"><span class="icon">🛡️</span> 守护进程</div>
-                    <div class="k8s-item" data-page="cronjobs"><span class="icon">⏰</span> 定时任务</div>
+                    <div class="k8s-item" data-page="deployments"><span class="icon"></span> 部署</div>
+                    <div class="k8s-item" data-page="statefulsets"><span class="icon"></span> 有状态集</div>
+                    <div class="k8s-item" data-page="daemonsets"><span class="icon"></span> 守护进程</div>
+                    <div class="k8s-item" data-page="jobs"><span class="icon"></span> 任务</div>
+                    <div class="k8s-item" data-page="cronjobs"><span class="icon"></span> 定时任务</div>
+                    <div class="k8s-item" data-page="pods"><span class="icon"></span> Pods</div>
                 </div>
             </div>
             <div>
                 <div class="k8s-group-title" onclick="k8sToggle(this)"><span class="arrow">▶</span> 网络</div>
                 <div class="k8s-group-items">
-                    <div class="k8s-item" data-page="services"><span class="icon">🌐</span> 服务</div>
-                    <div class="k8s-item" data-page="ingresses"><span class="icon">🔀</span> 入口</div>
+                    <div class="k8s-item" data-page="services"><span class="icon"></span> 服务</div>
+                    <div class="k8s-item" data-page="ingresses"><span class="icon"></span> 入口</div>
                 </div>
             </div>
             <div>
                 <div class="k8s-group-title" onclick="k8sToggle(this)"><span class="arrow">▶</span> 配置与存储</div>
                 <div class="k8s-group-items">
-                    <div class="k8s-item" data-page="configmaps"><span class="icon">⚙️</span> 配置映射</div>
-                    <div class="k8s-item" data-page="secrets"><span class="icon">🔑</span> 密钥</div>
-                    <div class="k8s-item" data-page="pvcs"><span class="icon">💾</span> PVC</div>
-                    <div class="k8s-item" data-page="pvs"><span class="icon">🗄️</span> PV</div>
-                    <div class="k8s-item" data-page="storageclasses"><span class="icon">📁</span> 存储类</div>
+                    <div class="k8s-item" data-page="configmaps"><span class="icon"></span> 配置映射</div>
+                    <div class="k8s-item" data-page="secrets"><span class="icon"></span> 密钥</div>
+                    <div class="k8s-item" data-page="pvcs"><span class="icon"></span> PVC</div>
+                    <div class="k8s-item" data-page="pvs"><span class="icon"></span> PV</div>
+                    <div class="k8s-item" data-page="storageclasses"><span class="icon"></span> 存储类</div>
                 </div>
             </div>
-            <div>
-                <div class="k8s-group-title" onclick="k8sToggle(this)"><span class="arrow">▶</span> 监控</div>
-                <div class="k8s-group-items">
-                    <div class="k8s-item" data-page="events"><span class="icon">🔔</span> 事件</div>
-                    <div class="k8s-item" data-page="resources"><span class="icon">📊</span> 资源</div>
-                </div>
-            </div>
+            <div class="k8s-group-title flat-item" data-page="resources" onclick="navigate('resources')">资源</div>
+            <div class="k8s-group-title flat-item" data-page="events" onclick="navigate('events')">事件</div>
         </nav>
     </div>
     <div class="k8s-content">
         <div class="k8s-toolbar">
             <div class="k8s-toolbar-left">
-                <h2 id="k8sPageTitle">📊 总览</h2>
+                <h2 id="k8sPageTitle"> 总览</h2>
                 <span class="k8s-badge" id="k8sCountBadge"></span>
             </div>
             <div class="k8s-toolbar-right">
@@ -155,7 +152,7 @@
                 <select class="k8s-ns-select" id="k8sNsSelect" onchange="k8sOnNSChange()">
                     <option value="all">全部命名空间</option>
                 </select>
-                <button class="k8s-btn k8s-btn-primary" onclick="k8sLoadData()">🔄 刷新</button>
+                <button class="k8s-btn k8s-btn-primary" onclick="k8sLoadData()"> 刷新</button>
             </div>
         </div>
         <div class="k8s-panel" id="k8sPanel"><div class="k8s-loading">加载中...</div></div>
@@ -165,13 +162,13 @@
 
 <div class="k8s-overlay" id="k8sYamlModal">
     <div class="k8s-box" style="max-width:860px">
-        <div class="k8s-box-header"><h3 id="k8sYamlTitle">YAML</h3><div class="k8s-box-actions"><button class="k8s-btn" id="k8sYamlCollapseBtn" onclick="k8sYamlCollapseAll()" title="折叠/展开" style="white-space:nowrap">📂 折叠</button><button class="k8s-box-close" onclick="k8sCloseModal('k8sYamlModal')">&times;</button></div></div>
+        <div class="k8s-box-header"><h3 id="k8sYamlTitle">YAML</h3><div class="k8s-box-actions"><button class="k8s-box-close" onclick="k8sCloseModal('k8sYamlModal')">&times;</button></div></div>
         <div class="k8s-box-body k8s-yaml-editor-body">
             <div class="k8s-yaml-gutter" id="k8sYamlGutter"></div>
             <textarea class="k8s-yaml-editor" id="k8sYamlEditor" spellcheck="false"></textarea>
         </div>
         <div class="k8s-yaml-footer">
-            <button class="k8s-btn k8s-btn-primary" id="k8sYamlApplyBtn" onclick="k8sYamlApply()" style="white-space:nowrap">✅ 应用</button>
+            <button class="k8s-btn k8s-btn-primary" id="k8sYamlApplyBtn" onclick="k8sYamlApply()" style="white-space:nowrap"> 应用</button>
         </div>
     </div>
 </div>
@@ -213,14 +210,14 @@
 var K8S='<%=luci.dispatcher.build_url("admin","services","kubernetes")%>';
 var page='overview',ns=localStorage.getItem('k8s_ns')||'all',execPod='';
 var cfg={
-    overview:{icon:'📊',title:'总览',api:null,special:'overview'},
-    nodes:{icon:'🖥️',title:'节点',api:'k8s_nodes',kind:'node',showNS:false,special:'nodes'},
-    namespaces:{icon:'',title:'命名空间',api:'k8s_namespaces',kind:'namespace',showNS:false,
+    overview:{title:'总览',api:null,special:'overview'},
+    nodes:{title:'节点',api:'k8s_nodes',kind:'node',showNS:false,special:'nodes'},
+    namespaces:{title:'命名空间',api:'k8s_namespaces',kind:'namespace',showNS:false,
         cols:[{label:'名称',w:'250px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'状态',w:'80px',r:function(i){var s=(i.status&&i.status.phase)||'-';return '<span class="k8s-st-'+(s==='Active'?'running':'failed')+'">'+esc(s)+'</span>';},html:true},
             {label:'创建时间',w:'120px',r:function(i){return age(i);}}
         ],actions:['yaml','edit','label','quota','delete']},
-    pods:{icon:'📦',title:'Pods',api:'k8s_pods',kind:'pod',showNS:true,
+    pods:{title:'Pods',api:'k8s_pods',kind:'pod',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'就绪',w:'60px',r:function(i){if(!i.status)return '-';var c=0,t=0;if(i.status.containerStatuses){t=i.status.containerStatuses.length;i.status.containerStatuses.forEach(function(x){if(x.ready)c++;});}return c+'/'+t;}},
@@ -230,7 +227,7 @@ var cfg={
             {label:'节点',w:'160px',m:1,r:function(i){return esc(i.spec?i.spec.nodeName||'-':'-');}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','logs','exec','describe','delete']},
-    deployments:{icon:'🚀',title:'部署',api:'k8s_deployments',kind:'deployment',showNS:true,
+    deployments:{title:'部署',api:'k8s_deployments',kind:'deployment',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'就绪',w:'70px',r:function(i){var s=i.status||{};return (s.readyReplicas||0)+'/'+(s.replicas||0);}},
@@ -238,14 +235,14 @@ var cfg={
             {label:'可用',w:'50px',r:function(i){return (i.status&&i.status.availableReplicas)||0;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','restart','describe','delete']},
-    statefulsets:{icon:'🔄',title:'有状态集',api:'k8s_statefulsets',kind:'statefulset',showNS:true,
+    statefulsets:{title:'有状态集',api:'k8s_statefulsets',kind:'statefulset',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'就绪',w:'70px',r:function(i){var s=i.status||{};return (s.readyReplicas||0)+'/'+(s.replicas||0);}},
             {label:'当前',w:'50px',r:function(i){return (i.status&&i.status.currentReplicas)||0;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    daemonsets:{icon:'🛡️',title:'守护进程',api:'k8s_daemonsets',kind:'daemonset',showNS:true,
+    daemonsets:{title:'守护进程',api:'k8s_daemonsets',kind:'daemonset',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'期望',w:'50px',r:function(i){return (i.status&&i.status.desiredNumberScheduled)||0;}},
@@ -253,13 +250,13 @@ var cfg={
             {label:'就绪',w:'50px',r:function(i){return (i.status&&i.status.numberReady)||0;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    jobs:{icon:'⚡',title:'任务',api:'k8s_jobs',kind:'job',showNS:true,
+    jobs:{title:'任务',api:'k8s_jobs',kind:'job',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'完成',w:'70px',r:function(i){var s=i.status||{};var c=s.completions||s.active||1;return (s.succeeded||0)+'/'+c;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    cronjobs:{icon:'⏰',title:'定时任务',api:'k8s_cronjobs',kind:'cronjob',showNS:true,
+    cronjobs:{title:'定时任务',api:'k8s_cronjobs',kind:'cronjob',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'调度',w:'120px',r:function(i){return esc((i.spec&&i.spec.schedule)||'-');}},
@@ -267,7 +264,7 @@ var cfg={
             {label:'活跃',w:'50px',r:function(i){return (i.status&&i.status.active)?i.status.active.length:0;}},
             {label:'上次调度',w:'100px',r:function(i){return (i.status&&i.status.lastScheduleTime)?age(i):'-';}}
         ],actions:['yaml','describe','delete']},
-    services:{icon:'🌐',title:'服务',api:'k8s_services',kind:'service',showNS:true,
+    services:{title:'服务',api:'k8s_services',kind:'service',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'类型',w:'70px',r:function(i){return esc((i.spec&&i.spec.type)||'-');}},
@@ -276,27 +273,27 @@ var cfg={
             {label:'端口',w:'180px',m:1,r:function(i){var s=i.spec||{};if(!s.ports)return '-';return esc(s.ports.map(function(p){return p.port+':'+p.targetPort+'/'+p.protocol;}).join(', '));}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    ingresses:{icon:'🔀',title:'入口',api:'k8s_ingresses',kind:'ingress',showNS:true,
+    ingresses:{title:'入口',api:'k8s_ingresses',kind:'ingress',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'主机',w:'200px',r:function(i){var s=i.spec||{};if(!s.rules)return '-';return esc(s.rules.map(function(r){return r.host||'*';}).join(', '));}},
             {label:'路径',w:'200px',r:function(i){var s=i.spec||{};if(!s.rules)return '-';var a=[];s.rules.forEach(function(r){(r.http&&r.http.paths||[]).forEach(function(p){a.push(p.path);});});return esc(a.join(', '));}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    configmaps:{icon:'⚙️',title:'配置映射',api:'k8s_configmaps',kind:'configmap',showNS:true,
+    configmaps:{title:'配置映射',api:'k8s_configmaps',kind:'configmap',showNS:true,
         cols:[
             {label:'名称',w:'220px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'数据项',w:'80px',r:function(i){var d=i.data||{};return Object.keys(d).length;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    secrets:{icon:'🔑',title:'密钥',api:'k8s_secrets',kind:'secret',showNS:true,
+    secrets:{title:'密钥',api:'k8s_secrets',kind:'secret',showNS:true,
         cols:[
             {label:'名称',w:'220px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'类型',w:'120px',r:function(i){return esc(i.type||'-');}},
             {label:'数据项',w:'80px',r:function(i){var d=i.data||{};return Object.keys(d).length;}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    pvcs:{icon:'💾',title:'PVC',api:'k8s_pvcs',kind:'persistentvolumeclaim',showNS:true,
+    pvcs:{title:'PVC',api:'k8s_pvcs',kind:'persistentvolumeclaim',showNS:true,
         cols:[
             {label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'状态',w:'70px',r:function(i){return esc((i.status&&i.status.phase)||'-');}},
@@ -304,7 +301,7 @@ var cfg={
             {label:'存储类',w:'120px',r:function(i){return esc((i.spec&&i.spec.storageClassName)||'-');}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    pvs:{icon:'🗄️',title:'PV',api:'k8s_pvs',kind:'persistentvolume',showNS:false,
+    pvs:{title:'PV',api:'k8s_pvs',kind:'persistentvolume',showNS:false,
         cols:[{label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'容量',w:'80px',r:function(i){var s=i.spec||{};return esc(s.capacity&&s.capacity.storage||'-');}},
             {label:'访问模式',w:'140px',r:function(i){var s=i.spec||{};if(!s.accessModes)return '-';return esc(s.accessModes.join(', '));}},
@@ -312,21 +309,21 @@ var cfg={
             {label:'状态',w:'70px',r:function(i){return esc((i.status&&i.status.phase)||'-');}},
             {label:'运行时间',w:'100px',r:function(i){return age(i);}}
         ],actions:['yaml','describe','delete']},
-    storageclasses:{icon:'📁',title:'存储类',api:'k8s_storageclasses',kind:'storageclass',showNS:false,
+    storageclasses:{title:'存储类',api:'k8s_storageclasses',kind:'storageclass',showNS:false,
         cols:[{label:'名称',w:'180px',m:1,r:function(i){return esc(i.metadata.name)}},
             {label:'提供者',w:'140px',r:function(i){return esc(i.provisioner||'-');}},
             {label:'回收策略',w:'100px',r:function(i){return esc(i.reclaimPolicy||'-');}},
             {label:'绑定模式',w:'100px',r:function(i){return esc(i.volumeBindingMode||'-');}},
-            {label:'默认',w:'50px',r:function(i){var a=i.metadata&&i.metadata.annotations;return (a&&a['storageclass.kubernetes.io/is-default-class']==='true')?'✅':'-';}}
+            {label:'默认',w:'50px',r:function(i){var a=i.metadata&&i.metadata.annotations;return (a&&a['storageclass.kubernetes.io/is-default-class']==='true')?'':'-';}}
         ],actions:['yaml','describe','delete']},
-    events:{icon:'🔔',title:'事件',api:'k8s_events',kind:'event',showNS:true,
+    events:{title:'事件',api:'k8s_events',kind:'event',showNS:true,
         cols:[{label:'时间',w:'100px',r:function(i){return esc(i.lastTimestamp||i.eventTime||'-');}},
             {label:'类型',w:'60px',r:function(i){var t=i.type||'Normal';return '<span class="k8s-st-'+(t==='Warning'?'failed':'running')+'">'+esc(t)+'</span>';},html:true},
             {label:'原因',w:'100px',r:function(i){return esc(i.reason||'-');}},
             {label:'对象',w:'180px',m:1,r:function(i){var v=i.involvedObject||{};return esc((v.kind||'?')+'/'+(v.name||''));}},
             {label:'消息',r:function(i){return esc(i.message||'');}}
         ],actions:[]},
-    resources:{icon:'📊',title:'资源',api:'k8s_resources',kind:'',showNS:true,special:'resources'}
+    resources:{title:'资源',api:'k8s_resources',kind:'',showNS:true,special:'resources'}
 };
 
 function esc(s){if(!s)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
@@ -334,6 +331,7 @@ function age(item){if(!item||!item.metadata||!item.metadata.creationTimestamp)re
 
 window.k8sToggle=function(el){el.classList.toggle('open');var it=el.nextElementSibling;if(it)it.classList.toggle('open');};
 window.k8sOnNSChange=function(){ns=document.getElementById('k8sNsSelect').value;localStorage.setItem('k8s_ns',ns);k8sLoadData();};
+window.navigate=navigate;
 
 function loadNS(){fetch(K8S+'/k8s_namespaces').then(function(r){return r.json();}).then(function(d){var s=document.getElementById('k8sNsSelect');if(!s)return;s.innerHTML='<option value="all">全部命名空间</option>';if(d.items)d.items.forEach(function(x){var o=document.createElement('option');o.value=x.metadata.name;o.textContent=x.metadata.name;if(o.value===ns)o.selected=true;s.appendChild(o);});}).catch(function(){});}
 
@@ -342,7 +340,7 @@ function loadNS(){fetch(K8S+'/k8s_namespaces').then(function(r){return r.json();
 function navigate(p){
     page=p;
     document.querySelectorAll('.k8s-item').forEach(function(el){el.classList.toggle('active',el.dataset.page===p);});
-    var c=cfg[p];if(c)document.getElementById('k8sPageTitle').textContent=c.icon+' '+c.title;
+    var c=cfg[p];if(c)document.getElementById('k8sPageTitle').textContent=c.title;
     k8sLoadData();
 }
 
@@ -489,15 +487,16 @@ function renderNodesTableInner(el,items,topMap,podStats){
 
 window.showNodeYAML=function(name){
     document.getElementById('k8sYamlTitle').textContent='节点详情 - '+name;
-    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
+    
     openM('k8sYamlModal');
     fetch(K8S+'/k8s_describe?kind=node&name='+encodeURIComponent(name)).then(function(r){return r.text();}).then(function(t){
         var ta=document.getElementById('k8sYamlEditor');
         ta.value=t||'(无数据)';
-        ta.setAttribute('data-full',ta.value);
-        ta.setAttribute('data-folded','0');
+        ta.setAttribute('data-full-text',t||'');
         k8sUpdateLineNumbers();
-    }).catch(function(e){var ta=document.getElementById('k8sYamlEditor');ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
+    }).catch(function(e){var ta=document.getElementById('k8sYamlEditor');ta.value='加载失败: '+e.message;
+        ta.removeAttribute('data-full-text');
+        k8sUpdateLineNumbers();});
 };
 
 
@@ -548,21 +547,22 @@ window.k8sHandle=function(btn){
 
 function doEdit(ns2,kind,name){
     document.getElementById('k8sYamlTitle').textContent='编辑 '+kind+' - '+name;
-    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
+    
     openM('k8sYamlModal');
     var ta=document.getElementById('k8sYamlEditor');
     ta.value='加载中...';
-    ta.setAttribute('data-full','');
-    ta.setAttribute('data-folded','0');
+    
+    
     k8sUpdateLineNumbers();
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     fetch(K8S+'/k8s_yaml?'+p).then(function(r){return r.text();}).then(function(t){
         ta.value=t||'(无数据)';
-        ta.setAttribute('data-full',ta.value);
-        ta.setAttribute('data-folded','0');
+        ta.setAttribute('data-full-text',t||'');
         k8sUpdateLineNumbers();
         setTimeout(function(){ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;},100);
-    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
+    }).catch(function(e){ta.value='加载失败: '+e.message;
+        ta.removeAttribute('data-full-text');
+        k8sUpdateLineNumbers();});
 }
 
 function doLabel(ns2,kind,name){
@@ -599,33 +599,85 @@ function showYAML(ns2,kind,name){
     yamlKind=kind;yamlName=name;yamlNS=ns2||'';
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     document.getElementById('k8sYamlTitle').textContent=kind+' - '+name+' YAML';
-    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
+    
     openM('k8sYamlModal');
     var ta=document.getElementById('k8sYamlEditor');
     ta.value='加载中...';
-    ta.setAttribute('data-full','');
-    ta.setAttribute('data-folded','0');
+    
+    
     k8sUpdateLineNumbers();
     fetch(K8S+'/k8s_yaml?'+p).then(function(r){return r.text();}).then(function(t){
         ta.value=t||'(无数据)';
-        ta.setAttribute('data-full',ta.value);
-        ta.setAttribute('data-folded','0');
+        ta.setAttribute('data-full-text',t||'');
         k8sUpdateLineNumbers();
         setTimeout(function(){ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;},100);
-    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
+    }).catch(function(e){ta.value='加载失败: '+e.message;
+        ta.removeAttribute('data-full-text');
+        k8sUpdateLineNumbers();});
 }
 
+var k8sFoldRanges=[];var k8sFoldIdCounter=0;
+function k8sGetIndent2(line){var m=line.match(/^(\s*)/);return m?m[1].length:0;}
+function k8sDetectFolds2(lines){
+    k8sFoldRanges=[];k8sFoldIdCounter=0;var i=0;
+    while(i<lines.length){
+        var indent=k8sGetIndent2(lines[i]);
+        if(lines[i].trim()===''||indent<0){i++;continue;}
+        var bs=-1,be=-1,j=i+1;
+        while(j<lines.length){
+            if(lines[j].trim()===''){j++;continue;}
+            var ni=k8sGetIndent2(lines[j]);
+            if(ni>indent){if(bs===-1)bs=j;be=j;j++;}else break;
+        }
+        if(bs!==-1&&be!==-1&&(be-i)>=3){
+            k8sFoldIdCounter++;
+            k8sFoldRanges.push({start:i,end:be,id:k8sFoldIdCounter,expanded:true});
+            i=be+1;
+        }else i++;
+    }
+}
 function k8sUpdateLineNumbers(){
     var ta=document.getElementById('k8sYamlEditor');
     var gutter=document.getElementById('k8sYamlGutter');
     if(!ta||!gutter)return;
-    var lines=ta.value.split('\n');
+    var fullText=ta.getAttribute('data-full-text')||ta.value;
+    var lines=fullText.split('\n');
+    k8sDetectFolds2(lines);
     var html='';
-    for(var i=1;i<=lines.length;i++){
-        html+='<div>'+i+'</div>';
+    for(var i=0;i<lines.length;i++){
+        var isFH=false,fId=0;
+        for(var f=0;f<k8sFoldRanges.length;f++){
+            if(k8sFoldRanges[f].start===i){isFH=true;fId=k8sFoldRanges[f].id;break;}
+        }
+        if(isFH){
+            var exp=true;for(var ff=0;ff<k8sFoldRanges.length;ff++){if(k8sFoldRanges[ff].id===fId){exp=k8sFoldRanges[ff].expanded;break;}}
+            html+='<div>'+(i+1)+' <span class="k8s-gutter-fold '+(exp?'':'collapsed')+'" data-fid="'+fId+'" onclick="k8sToggleYamlFold(this)"><span class="arr">▼</span></span></div>';
+        }else{
+            html+='<div>'+(i+1)+'</div>';
+        }
     }
     gutter.innerHTML=html;
 }
+window.k8sToggleYamlFold=function(el){
+    var fid=el.getAttribute('data-fid');
+    var fr=null;
+    for(var f=0;f<k8sFoldRanges.length;f++){if(String(k8sFoldRanges[f].id)===fid){fr=k8sFoldRanges[f];break;}}
+    if(!fr)return;
+    var ta=document.getElementById('k8sYamlEditor');
+    var fullLines=(ta.getAttribute('data-full-text')||ta.value).split('\n');
+    if(fr.expanded){
+        fr.expanded=false;
+        el.classList.add('collapsed');
+        var vis=[];
+        for(var i=0;i<fullLines.length;i++){if(i>=fr.start&&i<=fr.end)continue;vis.push(fullLines[i]);}
+        ta.value=vis.join('\n');
+    }else{
+        fr.expanded=true;
+        el.classList.remove('collapsed');
+        ta.value=fullLines.join('\n');
+    }
+    k8sUpdateLineNumbers();
+};
 
 function k8sSyncScroll(){
     var ta=document.getElementById('k8sYamlEditor');
@@ -633,63 +685,17 @@ function k8sSyncScroll(){
     if(ta&&gutter)gutter.scrollTop=ta.scrollTop;
 }
 
-function yamlToggleCollapse(textarea, btn){
-    var lines=textarea.value.split('\n');
-    var folded=textarea.getAttribute('data-folded')==='1';
-    if(folded){
-        textarea.value=textarea.getAttribute('data-full');
-        textarea.setAttribute('data-folded','0');
-        btn.textContent='📂 折叠';
-    } else {
-        var full=textarea.value;
-        textarea.setAttribute('data-full',full);
-        textarea.value=k8sFoldYaml(full);
-        textarea.setAttribute('data-folded','1');
-        btn.textContent='📄 展开';
-    }
-    k8sUpdateLineNumbers();
-}
-window.k8sYamlCollapseAll=function(){
-    var ta=document.getElementById('k8sYamlEditor');
-    var btn=document.getElementById('k8sYamlCollapseBtn');
-    yamlToggleCollapse(ta,btn);
-};
-function k8sFoldYaml(text){
-    var lines=text.split('\n'),result=[],fold=false,indent=0,prevIndent=0;
-    var foldKeys=['managedFields','creationTimestamp','resourceVersion','uid','selfLink','generation','finalizers','ownerReferences','annotations'];
-    for(var i=0;i<lines.length;i++){
-        var line=lines[i];
-        var m=line.match(/^(\s*)([\w.-]+):\s*(.*)$/);
-        if(m){
-            indent=m[1].length;
-            var key=m[2];
-            var val=m[3];
-            if(foldKeys.indexOf(key)!==-1 && (val===''||val==='[]'||val==='{')){
-                fold=true;prevIndent=indent;
-                if(indent===0){result.push(line+'  # ... ('+key+' 已折叠)');}
-                else{result.push(line.replace(/:.*$/,': ...'));} 
-                continue;
-            }
-            if(fold && indent>prevIndent){continue;}
-            fold=false;
-            result.push(line);
-        } else if(line.match(/^\s*- /)&&fold){continue;}
-        else{result.push(line);fold=false;}
-    }
-    return result.join('\n');
-}
-
 window.k8sYamlApply=function(){
-    var yaml=document.getElementById('k8sYamlEditor').getAttribute('data-folded')==='1'?document.getElementById('k8sYamlEditor').getAttribute('data-full'):document.getElementById('k8sYamlEditor').value;
+    var ta=document.getElementById('k8sYamlEditor');var yaml=ta.getAttribute('data-full-text')||ta.value;
     if(!yaml.trim()){alert('YAML 为空');return;}
     document.getElementById('k8sYamlApplyBtn').textContent='⏳ 应用中...';
     document.getElementById('k8sYamlApplyBtn').disabled=true;
     var p=new FormData();p.append('yaml',yaml);
     fetch(K8S+'/k8s_apply',{method:'POST',body:p}).then(function(r){return r.json();}).then(function(d){
-        document.getElementById('k8sYamlApplyBtn').textContent='✅ 应用';
+        document.getElementById('k8sYamlApplyBtn').textContent=' 应用';
         document.getElementById('k8sYamlApplyBtn').disabled=false;
         if(d.error)alert('应用失败: '+d.error);else{k8sCloseModal('k8sYamlModal');k8sLoadData();}
-    }).catch(function(e){document.getElementById('k8sYamlApplyBtn').textContent='✅ 应用';document.getElementById('k8sYamlApplyBtn').disabled=false;alert('请求失败: '+e.message);});
+    }).catch(function(e){document.getElementById('k8sYamlApplyBtn').textContent=' 应用';document.getElementById('k8sYamlApplyBtn').disabled=false;alert('请求失败: '+e.message);});
 };
 
 function showLogs(ns2,name){
@@ -735,19 +741,20 @@ window.k8sExecCmd=function(){
 function showDescribe(ns2,kind,name){
     var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);
     document.getElementById('k8sYamlTitle').textContent=kind+' 详情 - '+name;
-    document.getElementById('k8sYamlCollapseBtn').textContent='📂 折叠';
+    
     openM('k8sYamlModal');
     var ta=document.getElementById('k8sYamlEditor');
     ta.value='加载中...';
-    ta.setAttribute('data-full','');
-    ta.setAttribute('data-folded','0');
+    
+    
     k8sUpdateLineNumbers();
     fetch(K8S+'/k8s_describe?'+p).then(function(r){return r.text();}).then(function(t){
         ta.value=t||'(无数据)';
-        ta.setAttribute('data-full',ta.value);
-        ta.setAttribute('data-folded','0');
+        ta.setAttribute('data-full-text',t||'');
         k8sUpdateLineNumbers();
-    }).catch(function(e){ta.value='加载失败: '+e.message;ta.setAttribute('data-full','');ta.setAttribute('data-folded','0');k8sUpdateLineNumbers();});
+    }).catch(function(e){ta.value='加载失败: '+e.message;
+        ta.removeAttribute('data-full-text');
+        k8sUpdateLineNumbers();});
 }
 
 function doDelete(ns2,kind,name){var p='kind='+encodeURIComponent(kind)+'&name='+encodeURIComponent(name);if(ns2)p+='&namespace='+encodeURIComponent(ns2);fetch(K8S+'/k8s_delete?'+p,{method:'DELETE'}).then(function(r){return r.json();}).then(function(){k8sLoadData();}).catch(function(e){alert('删除失败: '+e.message);});}
@@ -787,29 +794,29 @@ window.k8sCloseModal=function(id){document.getElementById(id).classList.remove('
 function loadOverview(el,bd){
     bd.textContent='';
     var html='<div class="k8s-ov-grid" id="k8sOvCards"></div>';
-    html+='<h3 style="color:#333;margin:0 0 14px 0">🖥️ 节点状态</h3>';
+    html+='<h3 style="color:#333;margin:0 0 14px 0"> 节点状态</h3>';
     html+='<div class="k8s-node-grid" id="k8sNodeCards"></div>';
     el.innerHTML=html;
     var res=[
-        {page:'pods',icon:'📦',label:'Pods',api:'k8s_pods'},
-        {page:'deployments',icon:'🚀',label:'部署',api:'k8s_deployments'},
-        {page:'statefulsets',icon:'🔄',label:'有状态集',api:'k8s_statefulsets'},
-        {page:'daemonsets',icon:'🛡️',label:'守护进程',api:'k8s_daemonsets'},
-        {page:'jobs',icon:'⚡',label:'任务',api:'k8s_jobs'},
-        {page:'cronjobs',icon:'⏰',label:'定时任务',api:'k8s_cronjobs'},
-        {page:'services',icon:'🌐',label:'服务',api:'k8s_services'},
-        {page:'ingresses',icon:'🔀',label:'入口',api:'k8s_ingresses'},
-        {page:'configmaps',icon:'⚙️',label:'配置映射',api:'k8s_configmaps'},
-        {page:'secrets',icon:'🔑',label:'密钥',api:'k8s_secrets'},
-        {page:'pvcs',icon:'💾',label:'PVC',api:'k8s_pvcs'},
-        {page:'pvs',icon:'🗄️',label:'PV',api:'k8s_pvs'},
-        {page:'storageclasses',icon:'📁',label:'存储类',api:'k8s_storageclasses'},
-        {page:'events',icon:'🔔',label:'事件',api:'k8s_events'}
+        {page:'pods',label:'Pods',api:'k8s_pods'},
+        {page:'deployments',label:'部署',api:'k8s_deployments'},
+        {page:'statefulsets',label:'有状态集',api:'k8s_statefulsets'},
+        {page:'daemonsets',label:'守护进程',api:'k8s_daemonsets'},
+        {page:'jobs',label:'任务',api:'k8s_jobs'},
+        {page:'cronjobs',label:'定时任务',api:'k8s_cronjobs'},
+        {page:'services',label:'服务',api:'k8s_services'},
+        {page:'ingresses',label:'入口',api:'k8s_ingresses'},
+        {page:'configmaps',label:'配置映射',api:'k8s_configmaps'},
+        {page:'secrets',label:'密钥',api:'k8s_secrets'},
+        {page:'pvcs',label:'PVC',api:'k8s_pvcs'},
+        {page:'pvs',label:'PV',api:'k8s_pvs'},
+        {page:'storageclasses',label:'存储类',api:'k8s_storageclasses'},
+        {page:'events',label:'事件',api:'k8s_events'}
     ];
     var ce=document.getElementById('k8sOvCards');
     res.forEach(function(r){
         var d=document.createElement('div');d.className='k8s-ov-card';
-        d.innerHTML='<div class="icon">'+r.icon+'</div><div class="count" id="ov-'+r.api+'">-</div><div class="label">'+r.label+'</div>';
+        d.innerHTML='<div class="icon"></div><div class="count" id="ov-'+r.api+'">-</div><div class="label">'+r.label+'</div>';
         d.onclick=function(){navigate(r.page);};
         ce.appendChild(d);
         var q=ns!=='all'?'?namespace='+encodeURIComponent(ns):'';
@@ -834,12 +841,12 @@ function loadResources(el,bd){
     bd.textContent='';el.innerHTML='<div class="k8s-loading">加载中...</div>';
     var q=ns!=='all'?'?namespace='+encodeURIComponent(ns):'';
     fetch(K8S+'/k8s_resources'+q).then(function(r){return r.json();}).then(function(d){
-        var h='<h3 style="color:#333;margin:0 0 14px 0">️ 节点资源</h3><div class="k8s-table-wrap" style="margin-bottom:20px"><table class="k8s-table"><thead><tr><th>节点</th><th>CPU</th><th>内存</th></tr></thead><tbody>';
+        var h='<h3 style="color:#333;margin:0 0 14px 0"> 节点资源</h3><div class="k8s-table-wrap" style="margin-bottom:20px"><table class="k8s-table"><thead><tr><th>节点</th><th>CPU</th><th>内存</th></tr></thead><tbody>';
         var nodes=(d.nodes||'').trim().split('\n').filter(function(l){return l.trim();});
         if(!nodes.length)h+='<tr><td colspan="3" style="text-align:center;color:#999;padding:20px">暂无数据</td></tr>';
         else nodes.forEach(function(line){var f=line.trim().split(/\s+/);h+='<tr><td class="mono">'+esc(f[0])+'</td><td>'+esc(f[1]||'-')+' ('+esc(f[2]||'')+')</td><td>'+esc(f[3]||'-')+' ('+esc(f[4]||'')+')</td></tr>';});
         h+='</tbody></table></div>';
-        h+='<h3 style="color:#333;margin:0 0 14px 0">📦 Pod 资源</h3><div class="k8s-table-wrap"><table class="k8s-table"><thead><tr><th>命名空间</th><th>名称</th><th>CPU</th><th>内存</th></tr></thead><tbody>';
+        h+='<h3 style="color:#333;margin:0 0 14px 0"> Pod 资源</h3><div class="k8s-table-wrap"><table class="k8s-table"><thead><tr><th>命名空间</th><th>名称</th><th>CPU</th><th>内存</th></tr></thead><tbody>';
         var pods=(d.pods||'').trim().split('\n').filter(function(l){return l.trim();});
         if(!pods.length)h+='<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">暂无数据</td></tr>';
         else pods.forEach(function(line){var f=line.trim().split(/\s+/);h+='<tr><td><span class="k8s-ns-badge">'+esc(f[0])+'</span></td><td class="mono">'+esc(f[1])+'</td><td>'+esc(f[2]||'-')+'</td><td>'+esc(f[3]||'-')+'</td></tr>';});
@@ -850,15 +857,15 @@ function loadResources(el,bd){
 
 window.showNodeDescribe=function(name){
     document.getElementById('k8sYamlTitle').textContent='节点详情 - '+name;
-    document.getElementById('k8sYamlContent').textContent='加载中...';
-    document.getElementById('k8sYamlContent').style.display='';
-    document.getElementById('k8sYamlEditor').style.display='none';
-    document.getElementById('k8sYamlEditBtn').style.display='none';
-    document.getElementById('k8sYamlApplyBtn').style.display='none';
+    
     openM('k8sYamlModal');
     fetch(K8S+'/k8s_describe?kind=node&name='+encodeURIComponent(name)).then(function(r){return r.text();}).then(function(t){
-        document.getElementById('k8sYamlContent').textContent=t||'(无数据)';
-    }).catch(function(e){document.getElementById('k8sYamlContent').textContent='加载失败: '+e.message;});
+        var ta=document.getElementById('k8sYamlEditor');if(ta)ta.value=t||'(无数据)';
+        ta.setAttribute('data-full-text',t||'');
+        k8sUpdateLineNumbers();
+    }).catch(function(e){var ta=document.getElementById('k8sYamlEditor');if(ta)ta.value='加载失败: '+e.message;
+        ta.removeAttribute('data-full-text');
+        k8sUpdateLineNumbers();});
 };
 
 window.doDeleteNode=function(name){
