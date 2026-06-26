@@ -42,7 +42,6 @@
 | 家庭 K8s 实验室 | 在软路由上管理家中的 K8s 集群 |
 | 边缘计算节点 | 在边缘路由器上监控和管理边缘 K8s 节点 |
 | 轻量运维 | 不需要部署重型 Dashboard，手机/电脑打开浏览器即可操作 |
-| 多集群切换 | 通过 kubeconfig 快速切换管理不同 K8s 集群 |
 
 ---
 
@@ -91,11 +90,6 @@
 - 🗑️ **删除资源** — 安全删除各类资源
 - 🏷️ **标签管理** — 为资源打标签
 - 📦 **配额管理** — 为命名空间配置资源配额
-
-### 多集群支持
-- 工具栏下拉切换 kubeconfig
-- 自动记住最近使用过的 20 个 kubeconfig 路径
-- 支持自定义 kubeconfig 路径
 
 ---
 
@@ -171,9 +165,8 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/*
 
 1. 登录 LuCI Web 管理界面
 2. 导航到 **服务 → Kubernetes**
-3. 面板自动加载，默认使用 `/etc/kubernetes/admin.conf`
-4. 通过工具栏下拉切换 kubeconfig
-5. 点击左侧树导航切换不同视图
+3. 面板自动加载，默认使用 `/root/.kube/config`
+4. 点击左侧树导航切换不同视图
 
 ---
 
@@ -190,8 +183,8 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/*
 │  │  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐  │  │
 │  │  │ 左侧导航 │ │ 工具栏   │ │ 数据表格 │ │ 弹窗  │  │  │
 │  │  │ (TreeView)│ │(命名空间 │ │ (动态渲染) │ │(YAML │  │  │
-│  │  │         │ │ kubeconfig│ │          │ │ 日志  │  │  │
-│  │  │         │ │ 刷新按钮) │ │          │ │ 终端) │  │  │
+│  │  │         │ │ 刷新按钮) │ │          │ │ 日志  │  │  │
+│  │  │         │ │          │ │          │ │ 终端) │  │  │
 │  │  └─────────┘ └──────────┘ └──────────┘ └───────┘  │  │
 │  └───────────────────────────────────────────────────┘  │
 │                          │ fetch()                      │
@@ -224,7 +217,7 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/*
 │                          │                              │
 │                          ▼                              │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │  Kubeconfig (/etc/kubernetes/admin.conf)           │  │
+│  │  Kubeconfig (/root/.kube/config)                   │  │
 │  └───────────────────────────────────────────────────┘  │
 │                          │                              │
 └──────────────────────────┼──────────────────────────────┘
@@ -273,7 +266,6 @@ main.htm（单一 HTML 文件，包含所有视图）
 │   │   └── 右侧内容区 (k8s-content)
 │   │       ├── 工具栏 (k8s-toolbar)
 │   │       │   ├── 标题 + 计数徽章
-│   │       │   ├── Kubeconfig 下拉选择
 │   │       │   ├── 命名空间下拉选择
 │   │       │   └── 刷新按钮
 │   │       └── 数据面板 (k8s-panel) — 动态渲染
@@ -373,9 +365,6 @@ kubernetes.lua（后端控制器）
 │
 ├── 工具函数
 │   ├── exec_cmd(cmd) — 执行 Shell 命令（io.popen）
-│   ├── read_config() — 读取 /etc/kubernetes/k8s-ui-config.json
-│   ├── write_config(cfg) — 写入配置（含 kubeconfig 历史）
-│   ├── get_kubeconfig() — 获取当前 kubeconfig 路径
 │   └── run_kubectl(args, ns, as_json) — 封装 kubectl 调用
 │
 ├── 数据端点（GET → JSON）
@@ -407,8 +396,7 @@ kubernetes.lua（后端控制器）
 │   ├── action_restart() — 重启部署
 │   ├── action_apply() — 应用 YAML（写临时文件后 kubectl apply）
 │   ├── action_exec() — 在 Pod 中执行命令
-│   ├── action_containers() — 获取 Pod 容器列表
-│   └── action_settings() / action_settings_save() — kubeconfig 管理
+│   └── action_containers() — 获取 Pod 容器列表
 ```
 
 ### kubectl 调用封装
@@ -492,19 +480,10 @@ kubectl top nodes --no-headers
   │ ──────────────────────────────────────► │                                         │
 ```
 
-### kubeconfig 持久化流程
+### kubeconfig 配置
 
 ```
-/etc/kubernetes/k8s-ui-config.json
-│
-├── kubeconfig: "/etc/kubernetes/admin.conf"  ← 当前使用的 kubeconfig
-│
-└── history: [                                 ← 最近使用过的 kubeconfig 路径（最多 20 个）
-       "/etc/kubernetes/admin.conf",
-       "/etc/kubernetes/cluster2.conf",
-       "/tmp/custom-kubeconfig",
-       ...
-     ]
+/root/.kube/config  ← 当前使用的 kubeconfig（硬编码路径，位于 kubernetes.lua）
 ```
 
 ---
@@ -540,8 +519,6 @@ kubectl top nodes --no-headers
 | `k8s_logs` | GET | 获取 Pod 日志 |
 | `k8s_exec` | GET | 在 Pod 中执行命令 |
 | `k8s_containers` | GET | 获取 Pod 容器列表 |
-| `k8s_settings` | GET | 获取当前 kubeconfig 设置 |
-| `k8s_settings_save` | POST | 保存 kubeconfig 路径 |
 
 ---
 
@@ -550,23 +527,15 @@ kubectl top nodes --no-headers
 ### 前置条件
 
 1. **kubectl 已安装** 且在路由器 PATH 中可访问
-2. **kubeconfig 文件存在**（默认路径：`/etc/kubernetes/admin.conf`）
+2. **kubeconfig 文件存在**（默认路径：`/root/.kube/config`）
 3. 路由器能**网络访问** K8s API Server
 
 ### 默认配置
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| kubeconfig 路径 | `/etc/kubernetes/admin.conf` | K8s 集群配置文件 |
-| 配置文件 | `/etc/kubernetes/k8s-ui-config.json` | UI 配置（含 kubeconfig 历史） |
-| UCI 配置 | `uci show kubernetes` | OpenWrt UCI 配置（旧版兼容） |
-
-### 切换 Kubeconfig
-
-1. 进入 **服务 → Kubernetes**
-2. 工具栏下拉选择历史配置
-3. 选择 **📝 自定义...** 输入新路径
-4. 配置自动保存并在会话间持久化
+| kubeconfig 路径 | `/root/.kube/config` | K8s 集群配置文件（硬编码于 kubernetes.lua） |
+| UCI 配置 | `uci show kubernetes` | OpenWrt UCI 配置（当前未使用） |
 
 ---
 
@@ -593,7 +562,6 @@ kubectl top nodes --no-headers
 - 🔔 事件查看 / 📊 资源监控
 - 📝 YAML 查看/编辑/应用
 - 💻 Pod 终端
-- 🔄 Kubeconfig 切换
 - 🚀 GitHub Actions 自动构建 IPK
 
 ---
@@ -603,7 +571,7 @@ kubectl top nodes --no-headers
 ### 页面一直显示"加载中..."
 
 1. 检查 kubectl 是否已安装：`which kubectl`
-2. 检查 kubeconfig 是否有效：`KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes`
+2. 检查 kubeconfig 是否有效：`KUBECONFIG=/root/.kube/config kubectl get nodes`
 3. 清除 LuCI 缓存：`rm -rf /tmp/luci-* && /etc/init.d/rpcd restart`
 
 ### 连接被拒绝或找不到主机
