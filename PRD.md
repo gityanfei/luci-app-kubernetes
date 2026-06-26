@@ -222,9 +222,9 @@ OpenWrt/iStoreOS 路由器是家庭网络和边缘场景中的常驻设备，具
 
 | 需求编号 | 需求描述 | 优先级 | 状态 |
 |----------|----------|--------|------|
-| F-MC-01 | 工具栏下拉切换 kubeconfig | P0 | 未实现 |
+| F-MC-01 | 工具栏下拉切换 kubeconfig | P0 | 未实现（当前通过 UCI 配置） |
 | F-MC-02 | 自动记住最近使用过的 20 个 kubeconfig 路径 | P1 | 未实现 |
-| F-MC-03 | 支持自定义 kubeconfig 路径 | P1 | 未实现 |
+| F-MC-03 | 支持自定义 kubeconfig 路径 | P1 | 已实现（通过 UCI 配置） |
 
 ### 4.9 通用功能
 
@@ -291,7 +291,7 @@ OpenWrt/iStoreOS 路由器是家庭网络和边缘场景中的常驻设备，具
 ### 6.2 网络约束
 
 - 路由器需能网络访问 K8s API Server
-- kubeconfig 文件需预先部署到路由器上（默认路径 `/root/.kube/config`）
+- kubeconfig 文件需预先部署到路由器上（默认路径 `/root/.kube/config`，可通过 UCI 配置修改）
 - kubectl 需预先安装在路由器上
 
 ### 6.3 资源约束

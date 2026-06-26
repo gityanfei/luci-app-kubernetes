@@ -365,6 +365,7 @@ kubernetes.lua（后端控制器）
 │
 ├── 工具函数
 │   ├── exec_cmd(cmd) — 执行 Shell 命令（io.popen）
+│   ├── get_kubeconfig() — 从 UCI 读取 kubeconfig 路径
 │   └── run_kubectl(args, ns, as_json) — 封装 kubectl 调用
 │
 ├── 数据端点（GET → JSON）
@@ -534,8 +535,19 @@ kubectl top nodes --no-headers
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| kubeconfig 路径 | `/root/.kube/config` | K8s 集群配置文件（硬编码于 kubernetes.lua） |
-| UCI 配置 | `uci show kubernetes` | OpenWrt UCI 配置（当前未使用） |
+| kubeconfig 路径 | `/root/.kube/config` | K8s 集群配置文件（通过 UCI 管理） |
+| UCI 配置 | `uci show kubernetes` | OpenWrt UCI 配置 |
+
+### 修改配置
+
+```bash
+# 查看当前配置
+uci show kubernetes
+
+# 修改 kubeconfig 路径
+uci set kubernetes.config.kubeconfig='/path/to/your/kubeconfig'
+uci commit kubernetes
+```
 
 ---
 

@@ -70,9 +70,16 @@ local function exec_cmd(cmd)
     return output
 end
 
-local KUBECONFIG = "/root/.kube/config"
+local function get_kubeconfig()
+    local kc = uci:get("kubernetes", "config", "kubeconfig")
+    if kc and kc ~= "" then
+        return kc
+    end
+    return "/root/.kube/config"
+end
 
 local function run_kubectl(args, ns, as_json)
+    local KUBECONFIG = get_kubeconfig()
     local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl"
     if ns and ns ~= "" and ns ~= "all" then
         cmd = cmd .. " -n " .. ns
@@ -232,6 +239,7 @@ function action_apply()
     local f = io.open(tmpfile, "w")
     if not f then http.write_json({error = "cannot create temp file"}); return end
     f:write(yaml_content); f:close()
+    local KUBECONFIG = get_kubeconfig()
     local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl apply -f " .. tmpfile .. " 2>&1"
     local output = exec_cmd(cmd); os.remove(tmpfile)
     http.prepare_content("application/json"); http.write_json({message = "applied", detail = output})
@@ -258,6 +266,7 @@ function action_exec()
     if ns ~= "" and ns ~= "all" then args[#args+1] = "-n"; args[#args+1] = ns end
     if container ~= "" then args[#args+1] = "-c"; args[#args+1] = container end
     args[#args+1] = pod; args[#args+1] = "--"; args[#args+1] = command
+    local KUBECONFIG = get_kubeconfig()
     local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl"
     for _, arg in ipairs(args) do cmd = cmd .. " " .. arg end
     cmd = cmd .. " 2>&1"
@@ -276,6 +285,7 @@ end
 
 -- Top nodes
 function action_top_nodes()
+    local KUBECONFIG = get_kubeconfig()
     local output = exec_cmd("KUBECONFIG=" .. KUBECONFIG .. " kubectl top nodes --no-headers 2>/dev/null")
     local nodes = {}
     for line in output:gmatch('[^\n]+') do

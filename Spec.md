@@ -353,6 +353,7 @@ kubernetes.lua（后端控制器）
 │
 ├── 工具函数
 │   ├── exec_cmd(cmd) — 执行 Shell 命令（io.popen）
+│   ├── get_kubeconfig() — 从 UCI 读取 kubeconfig 路径
 │   ├── run_kubectl(args, ns, as_json) — 封装 kubectl 调用
 │   └── get_ns() — 从请求参数获取命名空间
 │
@@ -391,10 +392,17 @@ kubernetes.lua（后端控制器）
 ### 4.2 kubectl 调用封装
 
 ```lua
--- 全局 kubeconfig 路径
-local KUBECONFIG = "/root/.kube/config"
+-- 从 UCI 读取 kubeconfig 路径
+function get_kubeconfig()
+    local kc = uci:get("kubernetes", "config", "kubeconfig")
+    if kc and kc ~= "" then
+        return kc
+    end
+    return "/root/.kube/config"  -- 默认值
+end
 
 function run_kubectl(args, ns, as_json)
+    local KUBECONFIG = get_kubeconfig()
     local cmd = "KUBECONFIG=" .. KUBECONFIG .. " kubectl"
 
     -- 命名空间过滤
@@ -627,9 +635,12 @@ yaml=apiVersion: apps/v1%0Akind: Deployment%0Ametadata:%0A  name: my-app
 ### 6.2 kubeconfig 配置
 
 ```
-/root/.kube/config  ← 当前使用的 kubeconfig（硬编码于 kubernetes.lua）
+UCI 配置: /etc/config/kubernetes
+└── kubernetes.config.kubeconfig = "/root/.kube/config"  ← 默认值
 
-注：当前版本 kubeconfig 路径硬编码，不支持动态切换。
+修改方式:
+  uci set kubernetes.config.kubeconfig='/path/to/config'
+  uci commit kubernetes
 ```
 
 ---
@@ -690,29 +701,32 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/*
 
 ## 8. 配置说明
 
-### 8.1 UCI 配置（当前未使用）
-
-> 注意：以下 UCI 配置虽然存在于 `root/etc/config/kubernetes`，但当前代码中并未读取。kubeconfig 路径硬编码于 `kubernetes.lua` 中。
+### 8.1 UCI 配置
 
 ```
 config global 'config'
     option enabled '1'
-    option kubeconfig '/etc/kubernetes/admin.conf'
+    option kubeconfig '/root/.kube/config'
     option default_namespace 'default'
     option refresh_interval '15'
 ```
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `enabled` | `1` | 是否启用插件（未使用） |
-| `kubeconfig` | `/etc/kubernetes/admin.conf` | K8s 集群配置文件路径（未使用） |
-| `default_namespace` | `default` | 默认命名空间（未使用） |
-| `refresh_interval` | `15` | 自动刷新间隔（秒，未使用） |
+| `enabled` | `1` | 是否启用插件 |
+| `kubeconfig` | `/root/.kube/config` | K8s 集群配置文件路径 |
+| `default_namespace` | `default` | 默认命名空间（当前未使用） |
+| `refresh_interval` | `15` | 自动刷新间隔（秒，当前未实现） |
 
-### 8.2 硬编码配置（kubernetes.lua）
+### 8.2 修改配置
 
-```lua
-local KUBECONFIG = "/root/.kube/config"  -- 当前实际使用的 kubeconfig 路径
+```bash
+# 查看当前配置
+uci show kubernetes
+
+# 修改 kubeconfig 路径
+uci set kubernetes.config.kubeconfig='/path/to/your/kubeconfig'
+uci commit kubernetes
 ```
 
 ### 8.3 前置条件
@@ -720,7 +734,7 @@ local KUBECONFIG = "/root/.kube/config"  -- 当前实际使用的 kubeconfig 路
 | 条件 | 说明 |
 |------|------|
 | kubectl 已安装 | 在路由器 PATH 中可访问 |
-| kubeconfig 文件存在 | 路径 `/root/.kube/config` |
+| kubeconfig 文件存在 | 路径由 UCI 配置 `kubernetes.config.kubeconfig` 指定 |
 | 网络连通 | 路由器可访问 K8s API Server |
 | metrics-server | 部署在 K8s 集群中（资源监控功能需要） |
 
@@ -754,8 +768,6 @@ local KUBECONFIG = "/root/.kube/config"  -- 当前实际使用的 kubeconfig 路
 
 | 问题 | 说明 | 状态 |
 |------|------|------|
-| kubeconfig 路径不一致 | UCI 配置为 `/etc/kubernetes/admin.conf`，代码硬编码为 `/root/.kube/config` | 待修复 |
-| UCI 配置未使用 | `root/etc/config/kubernetes` 存在但代码未读取 | 待修复 |
 | 旧版页面未清理 | `view/kubernetes/` 下存在大量旧版独立页面 .htm 文件，已不再被路由引用 | 待清理 |
 | k8s-common.js 未使用 | 共享 JS 库文件仅被旧版页面引用，SPA 主页面使用内联 JS | 待清理 |
 | Pod exec 非交互式 | `kubectl exec -it` 在 HTTP 上下文中无法真正交互式，每次执行独立命令 | 设计限制 |
@@ -771,7 +783,7 @@ local KUBECONFIG = "/root/.kube/config"  -- 当前实际使用的 kubeconfig 路
 | 无 WebSocket | LuCI 框架不支持 WebSocket，终端为模拟实现 |
 | 无 RBAC | 依赖 kubeconfig 中的权限，插件本身不做权限控制 |
 | 无审计日志 | 操作不记录审计日志 |
-| 单集群 | 同一时刻只能查看一个集群，kubeconfig 路径硬编码 |
+| 单集群 | 同一时刻只能查看一个集群，需通过 UCI 修改 kubeconfig 路径切换 |
 | YAML 编辑器无语法校验 | 纯文本编辑，提交后才由 kubectl 校验 |
 
 ---
